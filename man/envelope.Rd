@@ -22,7 +22,7 @@ envelope(object, type = "deviance", size = 0.95, rep = 20, epsilon = 0.001, maxi
 
 If \code{object} is of class \code{pgam} the envelope is estimated and optionally plotted, else if is of class \code{envelope} then it is only plotted.
 }
-\value{An object of class \code{envelope} enough to plot the envelope.
+\value{An object of class \code{envelope} holding the information needed to plot the envelope.
 }
 \references{
 Atkinson, A. C. (1985) Plots, transformations and regression : an introduction to graphical methods of diagnostic regression analysis. Oxford Science Publications, Oxford.

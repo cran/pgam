@@ -8,11 +8,11 @@
 }
 \arguments{
   \item{object}{object of class \code{pgam} holding the fitted model}
-  \item{k}{default is 2 for AIC. If \eqn{k=\log\left(n\right)} then an approximation for BIC is achieved. Important to note that these are merely approximations.}
+  \item{k}{default is 2 for AIC. If \eqn{k=\log\left(n\right)} then an approximation for BIC is obtained. Important to note that these are merely approximations.}
   \item{\dots}{further arguments passed to method}
 }
 \details{An approximate measure of parsimony of the Poisson-Gama Additive Models can be achieved by the expression
-\deqn{AIC=\left(D\left(y;\hat\mu\right)+2gle\phi\right)/\left(n-\tau\right)}
+\deqn{AIC=\left(D\left(y;\hat\mu\right)+2gle\right)/\left(n-\tau\right)}
 where \eqn{gle} is the number of degrees of freedom of the model and \eqn{\tau} is the index of the first non-zero observation.
 }
 \value{The approximate AIC value of the fitted model.

@@ -9,7 +9,7 @@ f(factorvar)
 \arguments{
   \item{factorvar}{variable with the seasonal levels}
 }
-\value{List containing data matrix of dummy variables, level names and seasonal period.
+\value{List containing data matrix of dummy variables, level names and seasonal periods.
 }
 \author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
 }

@@ -11,7 +11,7 @@ link(x, link = "log", inv = FALSE)
   \item{link}{string with the name of the link function}
   \item{inv}{if \code{TRUE} its inverse is applied}
 }
-\details{This function is intended to port other link functions the \eqn{\log{\left(\right)}} to Poisson-Gamma Additive Models. For now, the only allowed value is \code{"log"}.
+\details{This function is intended to port other link functions than \eqn{\log{\left(\right)}} to Poisson-Gamma Additive Models. For now, the only allowed value is \code{"log"}.
 }
 \value{Evaluated link function at \code{x} values.
 }

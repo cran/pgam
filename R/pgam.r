@@ -25,17 +25,19 @@
 # 03/01/2004  resource consuming envelope plot implemented now, some bugs fixed - version 0.1.4
 # 12/01/2004  function call is returned now - version 0.1.5
 # 05/02/2004  minor changes in envelope routine - version 0.1.6
-# 12/02/2004  several functions re-written, majors changes, finally a library - version 0.2.0
-# 18/02/2004  C code linked, functions re-written, faster than never, documentation ok, fuctions removed others created for perfomance improvement - version 0.3.0 (release version)
+# 12/02/2004  several functions re-written, major changes, finally a library - version 0.2.0
+# 18/02/2004  C code linked, functions re-written, faster than never, documentation ok, functions removed, others created for perfomance improvement - version 0.3.0 (release version)
 # 19/02/2004  fixed documentation problems - version 0.3.1
 # 20/02/2004  one second faster, predict.pgam(), pgam.fit() and pgam.likelihood() are compiled C code now, new examples added to documentation - version 0.3.2
+# 21/02/2004  X11() call removed
+# 17/03/2004  some bugs fixed, some docs corrected, no more references to dispersion parameter, se of last seasonal factor, periodogram fixed, ... - version 0.3.3
+# 
 #
 # To do list:
 # -----------
-# * properly estimate s.e. of the last seasonal factor (it needs a function like par2psi())
 # * implement the analytical method to estimate information matrix
-# * correct estimation of spectrum
-# * using standardized deviance residuals in envelope can halt function --> to be fixed
+# * correct estimation of spectrum. done! but it needs some improvement!!!
+# * extend to use multiples seasonal factors
 #
 #
 # functions begin here -----------------------
@@ -86,7 +88,7 @@ sterms <- length(sindex)	# number of terms in smooth formula
 
 if (fterms)
 	{
-    for (k in 1:fterms)  # seasonal factors formula - one ocurrence only !!!! must change!!!
+    for (k in 1:fterms)  # seasonal factors formula - one occurrence only !!!! must change!!!
     	{
     	fed <- eval(parse(text=as.character(attr(formterms,"variables")[findex[k]+1]))) # f extraction
         for (d in 1:(fed$fperiod-1))
@@ -164,6 +166,8 @@ psi <- pgam.par2psi(par,fperiod)
 
 if (!is.null(psi$beta))
 	eta <- x%*%psi$beta+offset  # parametric piece of predictor
+else
+	eta <- double(n)
 
 filtered <- pgam.filter(psi$w,y,eta)
 att1 <- filtered$att1
@@ -272,7 +276,7 @@ if (length(par) > 1)
         	bk <- length(newbetak)+1
         	beta <- c(beta,newbetak,-sum(newbetak))
         	}
-	    if (length(newbeta) >= sum(fperiod))  # something odd is going on about here!
+	    if (length(newbeta) > sum(fperiod))  # something odd is going on about here!
 		    beta <- c(beta,newbeta[bk:length(newbeta)])
 		}
 	else
@@ -286,31 +290,50 @@ return(retval)
 pgam.hes2se <- function(hes,fperiod)
 # puts parameters hessian matrix in the form of beta s.e.
 {
-alpha <- hes[1]
-w <- exp(alpha)/(1+exp(alpha))
+sigma <- try(solve(-hes))
+
+alpha <- sigma[1]
+se.w <- sqrt(alpha*(exp(alpha)/(1+exp(alpha))^2)^2)  # correcting sigma^2_{omega} using delta rule James, B. (1996), Probabilidade:..., p.253
+
 beta <- NULL
+se.beta <- NULL
 
 if (length(hes) > 1)
 	{
-	newbeta <- hes[2:length(hes)]
+	p <- length(diag(sigma))
+	
+	sigmabeta <- sigma[2:p,2:p]
+	varbeta <- diag(sigmabeta)
+
 	fp <- length(fperiod)
 	bk <- 1
 
     if (!is.null(fperiod))
+    	{
 		for (k in 1:fp)
     		{
-        	newbetak <- newbeta[bk:(bk+fperiod[k]-2)]  # get pieces of beta from par
-        	bk <- length(newbetak)+1
-        	beta <- c(beta,newbetak,-sum(newbetak))
+        	varbetak <- varbeta[bk:(bk+fperiod[k]-2)]  # get pieces of beta from par
+        	covarbetak <- sigmabeta[bk:(bk+fperiod[k]-2),bk:(bk+fperiod[k]-2)]
+			bk <- length(varbetak)+1
+        	diag(covarbetak) <- 0.0
+			beta <- c(beta,varbetak,sum(varbetak)-sum(covarbetak))
         	}
-    beta <- c(beta,newbeta[bk:length(newbeta)])
+	    if (length(varbeta) > sum(fperiod))  # something odd is going on about here!
+		    beta <- c(beta,varbeta[bk:length(varbeta)])
+		}
+	else
+    	beta <- varbeta
+	
+	se.beta <- sqrt(beta)  # extracts standard error
     }
-retval <- list(w=w,beta=beta)
+	
+	
+retval <- list(w=se.w,beta=se.beta)
 return(retval)
 }
 
 
-pgam <- function(formula,dataset,omega=0.8,beta=0.01,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,control=list(trace=10,REPORT=10,maxit=1e2,abstol=1e-4,reltol=1e-3,factr=1e7,pgtol=0),optim.method="BFGS",partial.resid="response",smoother="spline",bkf.eps=1e-3,bkf.maxit=1e2,numerical.se=TRUE,verbose=TRUE)
+pgam <- function(formula,dataset,omega=0.5,beta=0.1,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,control=list(trace=10,REPORT=10,maxit=1e2,abstol=1e-4,reltol=1e-3,factr=1e7,pgtol=0),optim.method="BFGS",partial.resid="response",smoother="spline",bkf.eps=1e-3,bkf.maxit=1e2,numerical.se=TRUE,verbose=TRUE)
 # estimates Poisson-Gamma Additive Models
 {
 st <- proc.time()
@@ -400,7 +423,7 @@ if (!is.null(parsed$oterm))
     offset <- as.matrix(parsed$offset*ofactor)
 	}
 else
-	offset <- rep(0,n)
+	offset <- double(n)
 
 if (parsed$drift)
 	{
@@ -496,20 +519,16 @@ if (!is.null(sx))
 omega <- psi$w
 names(omega) <- c("(Discount)")
 beta <- psi$beta
+names(beta) <- c(fnames,pnames)
 se.omega <- NA
 se.beta <- NA
 if (numerical.se)
 	{
-    names(beta) <- c(fnames,pnames)
-    # temporary solution for s.e.
-	covar <- try(solve(-optimized$hessian))
-	se <- pgam.hes2se(sqrt(diag(covar)),fperiod)
-	alpha <- optimized$par[1]
-    se.omega <- se$w*(exp(alpha)/(1+exp(alpha))^2)  # correcting se using delta rule James, B. (1996), Probabilidade:..., p.253
+    se <- pgam.hes2se(optimized$hessian,fperiod)
+    se.omega <- se$w
     names(se.omega) <- c("(Discount)")
     se.beta <- se$beta
-    se.beta[fperiod[1]] <- NA  # temporary solution to avoid misunderstandings in output
-	names(se.beta) <- c(fnames,pnames)
+    names(se.beta) <- c(fnames,pnames)
     }
 
 iterations <- optimized$counts
@@ -561,7 +580,7 @@ d <- predicted$deviance
 h <- predicted$hat
 att1 <- object$att1
 btt1 <- object$btt1
-phi <- predicted$scale
+# phi <- predicted$scale
 
 raw <- y-mu  # getting raw residuals
 
@@ -573,8 +592,8 @@ else if (type == "deviance")
 	resid <- sign(raw)*sqrt(d)
 else if (type == "std_deviance")
 	resid <- sign(raw)*sqrt(d/(1-h))
-else if (type == "std_scl_deviance")
-	resid <- sign(raw)*sqrt(d/(phi*(1-h)))
+#else if (type == "std_scl_deviance")
+#	resid <- sign(raw)*sqrt(d/(phi*(1-h)))
 else if (type == "adj_deviance")
 	{
     skew <- (2-btt1)/sqrt(att1*(1-btt1))  # skewness coeficient of negative binomial distribution
@@ -602,18 +621,18 @@ w <- object$omega
 if (is.null(etap) && !(is.null(etas)))
 	{
 	model <- "nonparametric"
-	etap <- rep(0,n)
+	etap <- double(n)
 	}
 else if (!is.null(etap) && is.null(etas))
 	{
 	model <- "fullparametric"
-	etas <- rep(0,n)
+	etas <- double(n)
 	}
 else if (is.null(etap) && is.null(etas))
 	{
 	model <- "levelonly"
-	etap <- rep(0,n)
-	etas <- rep(0,n)
+	etap <- double(n)
+	etas <- double(n)
 	}
 else
 	model <- "semiparametric"
@@ -667,7 +686,7 @@ else if (model == "levelonly")
 # residuals are to be extracted elsewhere
 
 # scale parameter based on generalized Pearson statitics
-scale <- sum(oo$pearson,na.rm=TRUE)/object$resdf
+#scale <- sum(oo$pearson,na.rm=TRUE)/object$resdf
 
 # cleaning the house
 oo$yhat[1:fnz] <- NA
@@ -678,6 +697,7 @@ oo$pearson[1:fnz] <- NA
 # forecasting
 if (forecast)
 	{
+	stop("Forecasting not fully implemented yet.\n")
 	fc <- double(k)
 	if (model == "levelonly")
 		for (l in 1:k)
@@ -699,7 +719,7 @@ if (forecast)
 	forecast <- fc
 	}
 
-retval <- list(yhat=oo$yhat,vyhat=oo$vyhat,deviance=oo$deviance,pearson=oo$pearson,hat=hat,level=level,yhats=yhats,forecast=forecast,scale=scale)
+retval <- list(yhat=oo$yhat,vyhat=oo$vyhat,deviance=oo$deviance,pearson=oo$pearson,hat=hat,level=level,yhats=yhats,forecast=forecast)
 return(retval)
 }
 
@@ -749,9 +769,10 @@ predicted <- predict(object,...)
 nprime <- object$n-object$tau
 deviance <- sum(predicted$deviance,na.rm=TRUE)
 edf <- object$edf
-phi <- predicted$scale
+# phi <- predicted$scale
 
-retval <- (1/nprime)*(deviance+k*edf*phi)
+# retval <- (1/nprime)*(deviance+k*edf*phi)
+retval <- (1/nprime)*(deviance+k*edf)
 return(retval)
 }
 
@@ -773,7 +794,7 @@ alg.norm <- object$alg.norm
 # goodness-of-fit statistics
 deviance <- sum(predicted$deviance,na.rm=TRUE)
 pearson <- sum(predicted$pearson,na.rm=TRUE)
-scale <- predicted$scale
+# scale <- predicted$scale
 edf <- object$edf
 res.edf <- object$resdf
 # maximum likelihood parameters and hypothesis testing
@@ -799,7 +820,7 @@ else
 	pchi.smo <- NULL
 	}
 
-retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,scale=scale,edf=edf,res.edf=res.edf,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
+retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
 class(retval) <- "summary.pgam"
 return(retval)
 }
@@ -828,11 +849,12 @@ if (!is.null(x$vars.smo))
 	}
 cat("\nLog-likelihood value is ",round(x$loglik,digits)," after ",x$optim.method," has ",x$convergence,".\n",sep="")
 if (x$alg.k > 0)
-	cat("\nEstimation process of semiparametric model stopped after ",x$alg.k," iterations at ",round(x$alg.norm),".\n",sep="")
+	cat("\nEstimation process of semiparametric model stopped after ",x$alg.k," iterations at ",round(x$alg.norm,digits),".\n",sep="")
 else
 	cat("\nFull parametric model estimated.\n")
 cat("\nResidual deviance is ",round(x$deviance,digits)," on ",x$res.edf," estimated degrees of freedom.\n",sep="")
-cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
+# cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
+cat("\nGeneralized Pearson statistics is ",round(x$pearson,digits),".\n",sep="")
 cat("\nDiffuse initialization wasted the ",x$tau," first observation(s).\n",sep="")
 }
 
@@ -867,13 +889,15 @@ if (!is.null(edf))
 	for (i in 1:s)
 		{
 		if (at.once)
-			X11()
+			get(getOption("device"))()
 		else
 			if (interactive())
 				readline("Press ENTER for next page....")
+		
 		# must be in appropriate order
-		x <- x.g[order(x.g[,i]),]
-		y <- y.g[order(x.g[,i]),]
+		x <- as.data.frame(x.g[order(x.g[,i]),])
+		y <- as.data.frame(y.g[order(x.g[,i]),])
+		
 		plot(x[,i],y[,i],type="l",ylim=y.g.lim,xlab=vars.smo[i],ylab=y.g.lab[i],...)
 		rug(x.g[,i])
 		}
@@ -950,7 +974,7 @@ pres <- matrix(0,n,p)  # create storage space for partial residuals variables
 lev <- matrix(0,n,p)  # create storage space for smoother leverage
 edf <- double(p)  # create storage space for edf
 norm <- 1e35	# large value
-smooth <- rep(0,n)
+smooth <- double(n)
 m <- 0
 
 #backfitting
@@ -958,10 +982,10 @@ while ((norm >= eps) && (m <= maxit))
 	{
 	m <- m+1
     oldsmooth <- smooth
-    smooth <- rep(0,n)
+    smooth <- double(n)
     for (j in 1:p)
 		{
-		sumfx <- rep(0,n)
+		sumfx <- double(n)
         for (k in 1:p)
             smox[,k] <- (k!=j)*pgam.smooth(y,x[,k],df[k],fx[k],smoother=smoother,w=w)$fitted
         for (k in 1:p)
@@ -1080,30 +1104,30 @@ return(norm)
 }
 
 
-intensity <- function(x,n,y)
-# spectral analysis of series y
+intensity <- function(w,x)
+# spectral analysis of series x
 {
+n <- length(x)
 t <- seq(1:n)
 
-sp <- ((sum(y*cos(x*t)))^2+(sum(y*cos(x*t)))^2)/n
+sp <- ((sum(x*cos(w*t)))^2+(sum(x*cos(w*t)))^2)/n
 return(sp)
 }
 
 
-periodogram <- function(x,rows=length(x),plot=TRUE,title=NULL,...)
+periodogram <- function(y,rows=trunc(length(na.omit(y))/2-1),plot=TRUE,...)
 # creates and plots periodogram of series x
 {
 # initialization
-if (is.null(title))
-	title <- paste("Periodogram of series",deparse(substitute(x)))
-x <- na.exclude(x)
+if (rows > trunc(length(na.omit(y))/2-1))
+	rows <- trunc(length(na.omit(y))/2-1)
+x <- na.omit(y)
 n <- length(x)
-IOmega <- NULL
 i <- seq(1:trunc(n/2-1))
-t <- seq(1:n)
 omega <- (2*pi*i)/n
 
-IOmega <- sapply(i,function(x){intensity(omega[x], n=n, y=x)})
+# Iomega <- sapply(i,function(i){intensity(omega[i], x=x)})
+Iomega <- sapply(omega[i],intensity,x=x)
 period <- (2*pi)/omega
 period.max <- round(max(period),2)
 period.min <- round(min(period),2)
@@ -1111,15 +1135,15 @@ period.min <- round(min(period),2)
 if (plot)
 	{
 	# plots the periodogram
-	plot(omega, IOmega, xlab="Angular frequency (rad) - [Top axis is period in days]",ylab="I(omega)",bg="white",...)
+	plot(omega, Iomega, xlab="Angular frequency omega (rad)\n[Period on top axis]",ylab="I(omega)",...)
 	axis(3,at=c(min(omega),0.5,1.0,1.5,2.0,2.5,3.0,max(omega)),        labels=c(period.max,12.57,6.28,4.19,3.14,2.51,2.09,period.min))
-	title(main=title)
-	lines(omega,IOmega,type="h")
+	title(main=paste("Raw Periodogram of Series",deparse(substitute(y))))
+	lines(omega,Iomega,type="h")
 	}
 
 # returns periodogram
-periodogram <- cbind.data.frame(period,omega,IOmega)
-periodogram <- periodogram[order(periodogram$IOmega),]
+periodogram <- cbind.data.frame(period,omega,Iomega)
+periodogram <- periodogram[order(periodogram$Iomega,decreasing=TRUE),]
 
 retval <- periodogram[1:rows,]
 return(retval)
@@ -1198,14 +1222,15 @@ if (plot)
 	par(new=TRUE)
 	qqnorm(resid,main="Simulated Envelope of Residuals", ylab="Residual Components",xlab="Standard Normal Quantiles",ylim=band,bg="transparent",...)
 	}
-return(retval)
+if (class(object) == "pgam")
+	return(retval)
 }
 
 
 .First.lib <- function(lib, pkg)
 {
 ver <- package.description("pgam")[c("Version")]
-cat(paste("This is pgam library version",ver,"\n"))
+cat(paste("This is pgam library version",ver,"by\nWashington Junger <wjunger@ims.uerj.br>\n"))
 require("modreg",quietly=TRUE,warn.conflicts=FALSE)
 library.dynam("pgam",pkg,lib)
 }

@@ -20,7 +20,10 @@ where \eqn{sf_{r}} is a seasonal factor with period \eqn{r} and \eqn{df_{i}} is 
 \deqn{~sf_{1}+\dots+sf_{r}+V1+V2+V3}
 and
 \deqn{~V4+V5}
-This formulae will be used to build the necessary datasets for model estimation. \emph{Dummy} variables reproducing the seasonal factors will be created also.
+These two formulae will be used to build the necessary datasets for model estimation. \emph{Dummy} variables reproducing the seasonal factors will be created also.
+
+Models without explanatory variables must be specified as in the following formula
+\deqn{Y~NULL}
 }
 \value{List containing the information needed for model fitting.
 }

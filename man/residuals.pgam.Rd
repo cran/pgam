@@ -28,11 +28,11 @@ Deviance residuals are estimated by \eqn{r_{t}=sign\left(y_{t}-E\left(y_{t}|Y_{t
 Same as deviance, but the deviance component is divided by \eqn{(1-h_{t})}, where \eqn{h_{t}} is the \emph{t}-th element of the diagonal of the pseudo hat matrix of the approximating linear model. So they turn into \eqn{r_{t}=sign\left(y_{t}-E\left(y_{t}|Y_{t-1}\right)\right)*sqrt\left(d_{t}/\left(1-h_{t}\right)\right)}.\cr
 The element \eqn{h_{t}} has the form \eqn{h_{t}=\omega\exp\left(\eta_{t+1}\right)/\sum_{j=0}^{t-1}\omega^{j}\exp\left(\eta_{t-j}\right)}, where \eqn{\eta} is the predictor of the approximating linear model.
 
-\code{std_scl_deviance}\cr
-Just like the last one except for the dispersion parameter in its expression, so they have the form \eqn{r_{t}=sign\left(y_{t}-E\left(y_{t}|Y_{t-1}\right)\right)*sqrt\left(d_{t}/\phi*\left(1-h_{t}\right)\right)}, where \eqn{\phi} is the estimated dispersion parameter of the model. See \code{\link{summary.pgam}} for \eqn{\phi} estimation.
+%\code{std_scl_deviance}\cr
+%Just like the last one except for the dispersion parameter in its expression, so they have the form \eqn{r_{t}=sign\left(y_{t}-E\left(y_{t}|Y_{t-1}\right)\right)*sqrt\left(d_{t}/\phi*\left(1-h_{t}\right)\right)}, where \eqn{\phi} is the estimated dispersion parameter of the model. See \code{\link{summary.pgam}} for \eqn{\phi} estimation.
 
 \code{adj_deviance}\cr
-These are the deviance residuals multiplied by the coefficient of skewness estimated from the distribution. So they take the form \eqn{r_{t}=sign\left(y_{t}-E\left(y_{t}|Y_{t-1}\right)\right)*sqrt\left(d_{t}\right)*K}, where \eqn{K} is estimated by \eqn{K=\left(2-btt1\right)/sqrt\left(att1*\left(1-btt1\right)\right)}.
+These are the deviance residuals multiplied by the coefficient of skewness estimated from the distribution. So, considering the negative binomial predictive distribution, they take the form \eqn{r_{t}=sign\left(y_{t}-E\left(y_{t}|Y_{t-1}\right)\right)*sqrt\left(d_{t}\right)*K}, where \eqn{K} is estimated by \eqn{K=\left(2-btt1\right)/sqrt\left(att1*\left(1-btt1\right)\right)}.
 }
 \value{Vector of residuals of the model fitted.
 }

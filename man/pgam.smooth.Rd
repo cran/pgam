@@ -16,7 +16,7 @@ pgam.smooth(y, x, df, fx, smoother = "spline", w = rep(1, length(y)))
 }
 \details{Although several smoothers can be used in semiparametric regression models, only natural cubic splines is intended to be used in Poisson-Gamma Additive Models due to its interesting mathematical properties.
 
-Nowadays, this function interface those in \code{\link[modreg]{smooth.spline}} library. It will become not dependent soon enough.
+Nowadays, this function interface the \code{\link[modreg]{smooth.spline}} in \code{modreg} library. It will become not dependent soon enough.
 }
 \value{
   \item{fitted}{smoothed values}

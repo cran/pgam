@@ -12,7 +12,7 @@ elapsedtime(st, et)
 }
 \details{Start and end times can be gotten with \code{\link{proc.time}}.
 }
-\value{String with the elapsed time in hh:mm:ss format.
+\value{String with the elapsed time in \code{hh:mm:ss} format.
 }
 \author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
 }

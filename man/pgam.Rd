@@ -4,7 +4,7 @@
 \description{Fit Poisson-Gamma Additive Models using the roughness penalty approach
 }
 \usage{
-pgam(formula, dataset, omega = 0.8, beta = 0.01, offset = 1, digits = getOption("digits"),
+pgam(formula, dataset, omega = 0.5, beta = 0.1, offset = 1, digits = getOption("digits"),
 maxit = 100, eps = 1e-06, control = list(trace = 10, REPORT = 10, maxit = 100, abstol = 1e-04,
 reltol = 0.001, factr = 1e+07, pgtol = 0), optim.method = "BFGS", partial.resid = "response",
 smoother = "spline", bkf.eps = 0.001, bkf.maxit = 100, numerical.se = TRUE, verbose = TRUE)
