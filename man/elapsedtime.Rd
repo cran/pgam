@@ -10,7 +10,7 @@ elapsedtime(st, et)
   \item{st}{start time}
   \item{et}{end time}
 }
-\details{Start and end times can be gotten with \code{\link{proc.time}}.
+\details{Start and end times can be obtained with \code{\link{proc.time}}.
 }
 \value{String with the elapsed time in \code{hh:mm:ss} format.
 }

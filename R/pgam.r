@@ -34,6 +34,7 @@
 # 15/04/2004  some bugs fixed, compliance with R version 1.9.0, default (preferred) optimization method moved to L-BFGS-B, approximate dispersion parameter back, light docs on envelope, ...
 # 16/04/2004  removal of partial residuals options, full non-linear predictor, deals with NA's now, ... - version 0.4.0 beta
 # 28/08/2004  minor bugs corrected - version 0.4.0
+# 13/02/2005  fixed compiler flag, R version >= 1.9.0, broken missing data support removed and minor bugs fixed
 #
 #
 # To do list:
@@ -436,7 +437,9 @@ kp <- kx+kf # number of explanatory variables
 
 # getting rid of NA's
 tempDataset <- cbind(y,offset,px,sx)
-tempDataset <- na.omit(tempDataset)
+if (sum(is.na(tempDataset))>0)
+	stop("Missing data is not handled for now. It will be fixed soon.")
+#tempDataset <- na.omit(tempDataset)
 #print(dim(tempDataset));cat("\n")
 y <- as.matrix(tempDataset[,1])
 n <- length(y)  # get number of valid obs
@@ -1299,7 +1302,7 @@ else
 	pos <- paste(align,collapse=" ")
 
 # headers
-cat("% File generated on R environment by tbl2tex()\n% Creation date: ",date(),"\n% Suggestions to Washington Junger <wjunger@ims.uerj.br>\n",sep="",file=file,append=FALSE)
+cat("% File generated in R environment by tbl2tex()\n% Creation date: ",date(),"\n% Suggestions to Washington Junger <wjunger@ims.uerj.br>\n",sep="",file=file,append=FALSE)
 cat("\\begin{table}\n",ifelse(centered,"\\centering\n",""),"\\caption{",caption,"}\n\\label{",label,"}\n",sep="",file=file,append=TRUE)
 cat("    \\begin{tabular}{",pos,"} ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
 cat("    ",topleftcell," & ",paste(cnames,sep="",collapse=" & ")," \\\\ ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
@@ -1312,22 +1315,12 @@ cat("    \\end{tabular}\n\\end{table}\n\% End of tbl2tex() generated file.\n",se
 
 
 .First.lib <- function(lib, pkg)
-{
-if (eval(parse(text=R.Version()$major)) > 1 || eval(parse(text=R.Version()$minor)) >= 9)
 	{
 	ver <- packageDescription("pgam")[c("Version")]
 	require("stats",quietly=TRUE,warn.conflicts=FALSE)
+	cat(paste("This is pgam library version",ver,"by\nWashington Junger <wjunger@ims.uerj.br>\n"))
+	library.dynam("pgam",pkg,lib)
 	}
-else
-	{
-	# for backward compatibility
-	ver <- package.description("pgam")[c("Version")]
-	require("modreg",quietly=TRUE,warn.conflicts=FALSE)
-	}
-	
-cat(paste("This is pgam library version",ver,"by\nWashington Junger <wjunger@ims.uerj.br>\n"))
-library.dynam("pgam",pkg,lib)
-}
 
 
 .Last.lib <- function(libpath)

@@ -10,7 +10,7 @@ bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
 }
 \arguments{
   \item{formula}{a model formula. See \code{\link{pgam.parser}} for details}
-  \item{dataset}{a data set in the environment search path}
+  \item{dataset}{a data set in the environment search path. Missing data is temporarily not handled}
   \item{omega}{initial value for the discount factor}
   \item{beta}{vector of initial values for covariates coefficients. If a sigle value is supplied it is replicated to fill in the whole vector}
   \item{offset}{default is \eqn{1}. Other value can be supplied here}
