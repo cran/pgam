@@ -9,7 +9,7 @@ maxit = 100, eps = 1e-06, lfn.scale=1, control = list(), optim.method = "L-BFGS-
 bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
 }
 \arguments{
-  \item{formula}{a model formula. See \code{\link{pgam.parser}} for details}
+  \item{formula}{a model formula. See \code{\link{formparser}} for details}
   \item{dataset}{a data set in the environment search path. Missing data is temporarily not handled}
   \item{omega}{initial value for the discount factor}
   \item{beta}{vector of initial values for covariates coefficients. If a sigle value is supplied it is replicated to fill in the whole vector}
@@ -21,7 +21,7 @@ bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
   \item{control}{convergence control of \code{\link{optim}}. See its help for details}
   \item{optim.method}{optimization method passed to \code{\link{optim}}. Different methods can lead to different results, so the user must attempt to the trade off between speed and robustness. For example, \code{BFGS} is faster but sensitive to starting values and \code{L-BFGS-B} is more robust but slower. See its help for details.}
 %  \item{partial.resid}{type of partial residual to be used if semiparametric fitting. See \code{\link{residuals.pgam}} for details}
-%  \item{smoother}{smoother to be used in backfitting. See \code{\link{pgam.smooth}} for details}
+%  \item{smoother}{smoother to be used in backfitting. See \code{\link{bkfsmooth}} for details}
   \item{bkf.eps}{convergence control criterion for the backfitting algorithm}
   \item{bkf.maxit}{convergence control iterations for the backfitting algorithm}
   \item{se.estimation}{if \code{numerical} numerical standard error of parameters are returned. If \code{analytical} then analytical extraction of the standard errors is performed. By setting it to \code{none} standard error estimation is avoided}
@@ -36,17 +36,17 @@ This algorithm fits fully parametric Poisson-Gamma model also.
 \value{List containing an object of class \code{pgam}.
 }
 \references{
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-ParamÃ©rico: Uma Abordagem de PenalizaÃ§Ã£o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia ElÃ©trica
 
 Harvey, A. C., Fernandes, C. (1989) Time series models for count data or qualitative observations. Journal of Business and Economic Statistics, 7(4):407--417
 
-Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para Séries Temporais de Dados de Contagem - Teoria e Aplicações. 10a ESTE - Escola de Séries Temporais e Econometria
+Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para SÃ©ries Temporais de Dados de Contagem - Teoria e AplicaÃ§Ãµes. 10a ESTE - Escola de SÃ©ries Temporais e Econometria
 
 Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized Linear Models: a roughness penalty approach. Chapman and Hall, London
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
-\seealso{\code{\link{predict.pgam}}, \code{\link{pgam.parser}}, \code{\link{residuals.pgam}}, \code{\link{backfitting}}}
+\seealso{\code{\link{predict.pgam}}, \code{\link{formparser}}, \code{\link{residuals.pgam}}, \code{\link{backfitting}}}
 \examples{
 library(pgam)
 data(aihrio)

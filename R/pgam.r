@@ -1,10 +1,10 @@
 # This free software is distributed under de GNU GPL version 2 license agreement
-# This source code must be copied and modified since author is cited.
+# This source code may be copied and modified since the author is cited.
 # This software is free and it is provided with no warranty whatsoever
 # This software can be cited as follow:
 # cite the dissertation the source code is attached:
 #
-# Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+# Junger, W. L. (2004) Modelo Poisson-Gama Semi-ParamÃ©trico: Uma Abordagem de PenalizaÃ§Ã£o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia ElÃ©trica
 #
 # R code for Poisson-Gamma Additive Models (pgam)
 # it is part of Washington Junger's MSc. dissertations
@@ -34,7 +34,8 @@
 # 15/04/2004  some bugs fixed, compliance with R version 1.9.0, default (preferred) optimization method moved to L-BFGS-B, approximate dispersion parameter back, light docs on envelope, ...
 # 16/04/2004  removal of partial residuals options, full non-linear predictor, deals with NA's now, ... - version 0.4.0 beta
 # 28/08/2004  minor bugs corrected - version 0.4.0
-# 13/02/2005  fixed compiler flag, R version >= 1.9.0, broken missing data support removed and minor bugs fixed
+# 13/02/2005  fixed compiler flag, R version >= 1.9.0, broken missing data support removed and minor bugs fixed - version 0.4.1
+# 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce)- v. 0.4.2
 #
 #
 # To do list:
@@ -46,7 +47,7 @@
 #
 # functions begin here -----------------------
 
-pgam.parser <- function(formula,parent.level=1)
+formparser <- function(formula,parent.level=1)
 # reads the model formula and splits it in two new formulae: one of parametric
 # terms and another for smoothed terms. 
 {
@@ -69,11 +70,16 @@ fdata <- NULL
 fperiod <- NULL
 
 response <- attr(formterms,"response") 
-if (!is.null(response))
+if (!(response == 0))
+	{
 	response <- as.formula(paste("~",as.character(attr(formterms,"variables")[2]),sep=""))
+	r <- 1
+	}
 else
-	stop("Response variable not specified.")
-
+	{
+	response <- NULL
+	r <- 0
+	}
 if (!is.null(attr(formterms,"specials")$f))
 	findex <- attr(formterms,"specials")$f	# indeces of terms to be factorized in modterms array
 if (!is.null(attr(formterms,"specials")$g))
@@ -82,7 +88,7 @@ if (!is.null(attr(formterms,"offset")))
 	oindex <- attr(formterms,"offset") # offset location
 
 if (nterms)
-	for (k in 2:(nterms+1))
+	for (k in (r+1):(nterms+r))
 		if (!(k %in% sindex) && !(k %in% oindex) && !(k %in% findex))
     		pindex <- c(pindex,k)  # gets parametric terms indeces
 
@@ -130,14 +136,13 @@ if (!is.null(oindex))  # dealing with the offset term
 	offset<- eval(parse(text=oterm))
 	}
 	
-# the poisson-gamma model does not have intercept. i will keep this for future use as deterministic drift.   
 if (attr(formterms,"intercept") == 0)
-    drift <- FALSE
+    intercept <- FALSE
 else
-	drift <- TRUE
+	intercept <- TRUE
 
-retval <- list(response=response,pformula=pformula,pterms=pterms,sformula=sformula,sdf=sdf,sfx=sfx,sterms=sterms,fterms=fterms,fformula=fformula,fnames=fnames,fdata=fdata,fperiod=fperiod,oterm=oterm,offset=offset,drift=drift,fullformula=formula)
-class(retval) <- "pgam.split.formula"
+retval <- list(response=response,pformula=pformula,pterms=pterms,sformula=sformula,sdf=sdf,sfx=sfx,sterms=sterms,fterms=fterms,fformula=fformula,fnames=fnames,fdata=fdata,fperiod=fperiod,oterm=oterm,offset=offset,intercept=intercept,fullformula=formula)
+class(retval) <- "split.formula"
 return(retval)
 }
 
@@ -365,7 +370,7 @@ if (!verbose)
 	}
 control$fnscale <- lfn.scale*(-1)
 
-parsed <- pgam.parser(formula)  # parse the formula and get components
+parsed <- formparser(formula)  # parse the formula and get components
 
 # building datasets and setting the model structure (no explanatory variables, seasonal factors, linear, additive, offset, drift)
 response <- framebuilder(parsed$response,dataset)$frame
@@ -426,7 +431,7 @@ if (!is.null(parsed$oterm))
 else
 	offset <- double(length(y))
 
-if (parsed$drift)
+if (parsed$intercept)
 	{
     # to be worked out
     }
@@ -739,6 +744,7 @@ oo$pearson[1:fnz] <- NA
 # forecasting
 if (forecast)
 	{
+	stop("Sorry! Forecasting is broken for now.\n")
 	if (model == "semiparametric")
 		stop("Forecasting of semiparametric models is not implemented yet.\n")
 	fc <- double(k)
@@ -778,7 +784,7 @@ return(retval)
 
 
 coef.pgam <- function(object,...)
-# method for parametric coefficients extraction. although omega is not a coef, it is output at first slot.
+# method for parametric coefficients extraction. although omega is not a coef, it is output in the first slot.
 {
 retval <- c(object$omega,object$beta)
 return(retval)
@@ -972,7 +978,7 @@ for (k in 1:m)
 names(factordata) <- datanames
 
 retval <- list(factordata=factordata,factornames=datanames,fperiod=m)
-class(retval) <- "pgam.factor.info"
+class(retval) <- "factor.info"
 return(retval)
 }
 
@@ -982,7 +988,7 @@ g <- function(var,df,fx=TRUE)
 {
 varname <- deparse(substitute(var))
 retval <- list(var=varname,df=df,fx=fx)
-class(retval) <- "pgam.spline.info"
+class(retval) <- "spline.info"
 return(retval)
 }
 
@@ -1004,7 +1010,7 @@ if (!is.null(formula))
 else
 	frame <- NULL
 retval <- list(frame=frame)
-class(retval) <- "pgam.data.frame"
+class(retval) <- "data.frame"
 return(retval)
 }
 
@@ -1035,11 +1041,11 @@ while ((norm >= eps) && (m <= maxit))
 		{
 		sumfx <- double(n)
         for (k in 1:p)
-            smox[,k] <- (k!=j)*pgam.smooth(y,x[,k],df[k],fx[k],smoother=smoother,w=w)$fitted
+            smox[,k] <- (k!=j)*bkfsmooth(y,x[,k],df[k],fx[k],smoother=smoother,w=w)$fitted
         for (k in 1:p)
             sumfx <- sumfx+(k!=j)*smox[,k]
         pres[,j] <- y-sumfx
-        smoothed <- pgam.smooth(pres[,j],x[,j],df[j],fx[j],smoother=smoother,w=w)
+        smoothed <- bkfsmooth(pres[,j],x[,j],df[j],fx[j],smoother=smoother,w=w)
 		smox[,j] <- smoothed$fitted
 #		lev[,j] <- smoothed$lev
 #		edf[j] <- smoothed$df
@@ -1068,7 +1074,7 @@ return(retval)
 }
 
 
-pgam.smooth <- function(y,x,df,fx,smoother="spline",w=rep(1,length(y)))
+bkfsmooth <- function(y,x,df,fx,smoother="spline",w=rep(1,length(y)))
 # smooths y against x wiht ds degrees of smoothness
 {
 if (smoother=="spline")
@@ -1198,7 +1204,12 @@ return(retval)
 }
 
 
-envelope <- function(object,type="deviance",size=.95,rep=19,optim.method=NULL,epsilon=1e-3,maxit=1e2,plot=TRUE,verbose=FALSE,...)
+envelope <- function(object,...)
+# generic function for simulated envelope generation
+	UseMethod("envelope")
+	
+
+envelope.pgam <- function(object,type="deviance",size=.95,rep=19,optim.method=NULL,epsilon=1e-3,maxit=1e2,plot=TRUE,verbose=FALSE,...)
 # simulates and plots an envelope of residuals based on A. C. Atkinson book
 {
 if (class(object) == "pgam")
@@ -1315,12 +1326,12 @@ cat("    \\end{tabular}\n\\end{table}\n\% End of tbl2tex() generated file.\n",se
 
 
 .First.lib <- function(lib, pkg)
-	{
-	ver <- packageDescription("pgam")[c("Version")]
-	require("stats",quietly=TRUE,warn.conflicts=FALSE)
-	cat(paste("This is pgam library version",ver,"by\nWashington Junger <wjunger@ims.uerj.br>\n"))
-	library.dynam("pgam",pkg,lib)
-	}
+{
+ver <- packageDescription("pgam")[c("Version")]
+require("stats",quietly=TRUE,warn.conflicts=FALSE)
+cat(paste("This is pgam library version",ver,"\n",sep=" "))
+library.dynam("pgam",pkg,lib)
+}
 
 
 .Last.lib <- function(libpath)

@@ -46,8 +46,8 @@ A data frame with 365 observations on the following 33 variables.
 \details{This is a reduced dataset of those used to estimate possible effects of air pollution on hospital admissions outcomes in Universidade do Estado do Rio de Janeiro, Rio de Janeiro, Brasil.
 }
 \source{
-Secretaria de Meio Ambiente da Cidade do Rio de Janeiro, MinistÈrio de Aeron·utica and Datasus.
+Secretaria de Meio Ambiente da Cidade do Rio de Janeiro, Minist√©rio de Aeron√°utica and Datasus.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \keyword{datasets}

@@ -20,11 +20,11 @@ Harvey, A. C., Fernandes, C. (1989) Time series models for count data or qualita
 
 McCullagh, P., Nelder, J. A. (1989). Generalized Linear Models. Chapman and Hall, 2nd edition, London
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }
-\seealso{\code{\link{pgam}}, \code{\link{pgam.parser}}}
+\seealso{\code{\link{pgam}}, \code{\link{formparser}}}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

@@ -1,12 +1,12 @@
 %
-\name{pgam.parser}
-\alias{pgam.parser}
+\name{formparser}
+\alias{formparser}
 \title{Read the model formula and split it into the	parametric and nonparametric partitions}
 \description{
 Read the model formula and split it into two new ones concerning the parametric and nonparametric partitions of the predictor.
 }
 \usage{
-pgam.parser(formula, parent.level=1)
+formparser(formula, parent.level=1)
 }
 \arguments{
 \item{formula}{object representing the model formula. \R standard for GLM models}
@@ -28,7 +28,7 @@ Models without explanatory variables must be specified as in the following formu
 \value{List containing the information needed for model fitting.
 }
 \author{
-Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }

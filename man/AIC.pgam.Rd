@@ -20,13 +20,13 @@ where \eqn{gle} is the number of degrees of freedom of the fitted model and \eqn
 \references{
 Harvey, A. C., Fernandes, C. (1989) Time series models for count data or qualitative observations. Journal of Business and Economic Statistics, 7(4):407--417
 
-Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para Séries Temporais de Dados de Contagem - Teoria e Aplicações. 10a ESTE - Escola de Séries Temporais e Econometria
+Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para SÃ©ries Temporais de Dados de Contagem - Teoria e AplicaÃ§Ãµes. 10a ESTE - Escola de SÃ©ries Temporais e Econometria
 
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-ParamÃ©rico: Uma Abordagem de PenalizaÃ§Ã£o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia ElÃ©trica
 
 Hastie, T. J., Tibshirani, R. J.(1990) Generalized Additive Models. Chapman and Hall, London
 } 
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}, \code{\link{deviance.pgam}}, \code{\link{logLik.pgam}}}
 \examples{

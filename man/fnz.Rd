@@ -11,7 +11,7 @@ fnz(y)
 }
 \value{The index of first non-zero value.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }

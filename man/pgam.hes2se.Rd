@@ -14,11 +14,11 @@ pgam.hes2se(hes, fperiod, se.estimation="numerical")
 }
 \value{List containing the hyperparameters \eqn{omega} and \eqn{beta} standard errors.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }
-\seealso{\code{\link{pgam}}, \code{\link{pgam.parser}}}
+\seealso{\code{\link{pgam}}, \code{\link{formparser}}}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

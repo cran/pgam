@@ -17,9 +17,10 @@
 }
 \value{No value returned.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
-\seealso{\code{\link{pgam}}, \code{\link{pgam.fit}}, \code{\link{pgam.likelihood}}}\examples{
+\seealso{\code{\link{pgam}}, \code{\link{pgam.fit}}, \code{\link{pgam.likelihood}}}
+\examples{
 library(pgam)
 data(aihrio)
 attach(aihrio)

@@ -13,9 +13,9 @@ lpnorm(seq1, seq2 = 0, p = 0)
 }
 \value{The computed norm value.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
-\seealso{\code{\link{pgam}}, \code{\link{pgam.parser}}}
+\seealso{\code{\link{pgam}}}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

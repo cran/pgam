@@ -1,35 +1,37 @@
-pgam.parser				Read the model formula and split it into two new ones:
-						parametric and nonparametric partitions of predictor.
-pgam.filter				Run appropriate recursions for estimation of priori and 
-						posteriori conditional distribution parameters of the level.
-pgam.likelihood			Likelihood function to be maximized.
-pgam.fit				Estimate one-step ahead expectation of y_t conditional
-						on Y_t-1.
-pgam.psi2par			Put hyperparameters into unconstrained form for optimization.
-pgam.par2psi			Put optimized parameters back into omega and beta form.
-pgam.hes2se				Put hyperparameters hessian matrix in the form of omega and beta
-						standard error.
-pgam					Fit a Poisson-Gamma Additive Model (PGAM).
-residuals.pgam			Method for residuals extraction.
-predict.pgam			Method for k-step ahead forecasting.
-fitted.pgam				Method for fitted values extraction.
-coef.pgam				Method for parametric coefficients extraction. 
-logLik.pgam				Method for loglik value extraction.
-deviance.pgam			Method for deviance extraction.
-AIC.pgam				Method for appproximate AIC estimation.
-summary.pgam			Method for output model information.
-print.summary.pgam		Method for summary printing.
-plot.pgam				Method for level and smooth terms plotting.
-f						Build seasonal factors data matrix.
-g						Extract smoothing information from the formula.
-fnz						Return first non-zero observation index.
-framebuilder			Build a data frame given the formula.
-backfitting				Fit the nonparametric partition of a PGAM moel.
-pgam.smooth				Wrapper for the smoothers functions
-elapsedtime				Compute the elapsed time between start and end time.
-link					Aplly the link function or its inverse.
-lpnorm					Return the Lp-norm. If p=0 then Infinity norm is returned.
-intensity				Spectral decomposition of a time series.
-periodogram				Create and plot the periodogram of a time series.
-envelope				Simulate and plot an envelope of residuals of a PGAM model.
-tbl2tex					Export a data frame to a fancy LaTeX table environment.
+AIC.pgam                AIC extraction
+aihrio                  Sample dataset
+backfitting             Backfitting algorithm
+bkfsmooth               Smoothing of nonparametric terms
+coef.pgam               Coefficients extraction
+deviance.pgam           Deviance extraction
+elapsedtime             Utility function
+envelope                Generic function for simulated envelope
+                        generation.
+envelope.pgam           Normal plot with simulated envelope of the
+                        residuals.
+f                       Utility function
+fitted.pgam             Fitted values extraction
+fnz                     Utility function
+formparser              Read the model formula and split it into the
+                        parametric and nonparametric partitions
+framebuilder            Utility function
+g                       Utility function
+intensity               Utility function
+link                    Utility function
+logLik.pgam             Loglik extraction
+lpnorm                  Utility function
+periodogram             Raw Periodogram
+pgam                    Poisson-Gamma Additive Models
+pgam.filter             Estimation of the conditional distributions
+                        parameters of the level
+pgam.fit                One-step ahead prediction and variance
+pgam.hes2se             Utility function
+pgam.likelihood         Likelihood function to be maximized
+pgam.par2psi            Utility function
+pgam.psi2par            Utility function
+plot.pgam               Plot of estimated curves
+predict.pgam            Prediction
+print.summary.pgam      Summary output
+residuals.pgam          Residuals extraction
+summary.pgam            Summary output
+tbl2tex                 LaTeX table exporter

@@ -14,7 +14,7 @@ elapsedtime(st, et)
 }
 \value{String with the elapsed time in \code{hh:mm:ss} format.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}}
 	\keyword{ts}

@@ -20,7 +20,7 @@ Box, G., Jenkins, G., Reinsel, G. (1994) Time Series Analysis : Forecasting and 
 
 Diggle, P. J. (1989) Time Series : A Biostatistical Introduction. Oxford University Press, Oxford.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }

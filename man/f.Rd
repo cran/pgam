@@ -11,11 +11,11 @@ f(factorvar)
 }
 \value{List containing data matrix of dummy variables, level names and seasonal periods.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \note{This function is intended to be called from within a model formula.
 }
-\seealso{\code{\link{pgam}}, \code{\link{pgam.parser}}}
+\seealso{\code{\link{pgam}}, \code{\link{formparser}}}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

@@ -14,7 +14,7 @@
 }
 \value{No value is returned.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}, \code{\link{predict.pgam}}}
 	\keyword{ts}

@@ -22,7 +22,7 @@ tbl2tex(tbl, label = "tbl:label(must_be_changed!)", caption = "Table generated w
 }
 \value{LaTeX code is routed through file or console for copying and pasting.
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \note{For now, it handles only numerical data.
 }

@@ -6,7 +6,6 @@
 \usage{
 backfitting(y, x, df, fx, smoother = "spline", w = rep(1, length(y)), eps = 0.001, maxit = 100, info = TRUE)
 }
-%- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{y}{dependent variable for fitting. In semiparametric models, this is the partial residuals of parametric fit}
   \item{x}{matrix of covariates}
@@ -27,15 +26,15 @@ More details soon enough.
 \references{
 Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized Linear Models: a roughness penalty approach. Chapman and Hall, London
 
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramï¿½rico: Uma Abordagem de Penalizaï¿½o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elï¿½rica
 
 Hastie, T. J., Tibshirani, R. J.(1990) Generalized Additive Models. Chapman and Hall, London
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }
-\seealso{\code{\link{pgam}}, \code{\link{predict.pgam}}, \code{\link{pgam.smooth}}}
+\seealso{\code{\link{pgam}}, \code{\link{predict.pgam}}, \code{\link{bkfsmooth}}}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

@@ -1,10 +1,10 @@
-\name{pgam.smooth}
-\alias{pgam.smooth}
+\name{bkfsmooth}
+\alias{bkfsmooth}
 \title{Smoothing of nonparametric terms}
 \description{Interface for smoothing functions
 }
 \usage{
-pgam.smooth(y, x, df, fx, smoother = "spline", w = rep(1, length(y)))
+bkfsmooth(y, x, df, fx, smoother = "spline", w = rep(1, length(y)))
 }
 \arguments{
   \item{y}{dependent variable for fitting. In semiparametric models, this is the partial residuals of parametric fit}
@@ -28,9 +28,9 @@ Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized L
 
 Hastie, T. J., Tibshirani, R. J.(1990) Generalized Additive Models. Chapman and Hall, London
 
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-ParamÃ©trico: Uma Abordagem de PenalizaÃ§Ã£o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia ElÃ©trica
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }

@@ -5,7 +5,6 @@
 \usage{
 \method{predict}{pgam}(object, forecast = FALSE, k = 1, x = NULL, ...)
 }
-%- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{object of class \code{pgam} holding the fitted model}
   \item{forecast}{if \code{TRUE} the function tries to forecast}
@@ -37,9 +36,9 @@ Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized L
 
 Harvey, A. C., Fernandes, C. (1989) Time series models for count data or qualitative observations. Journal of Business and Economic Statistics, 7(4):407--417
 
-Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para Séries Temporais de Dados de Contagem - Teoria e Aplicações. 10a ESTE - Escola de Séries Temporais e Econometria
+Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para SÃ©ries Temporais de Dados de Contagem - Teoria e AplicaÃ§Ãµes. 10a ESTE - Escola de SÃ©ries Temporais e Econometria
 
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-ParamÃ©rico: Uma Abordagem de PenalizaÃ§Ã£o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia ElÃ©trica
 
 Harvey, A. C. (1990) Forecasting, structural time series models and the Kalman Filter. Cambridge, New York
 
@@ -47,7 +46,7 @@ Hastie, T. J., Tibshirani, R. J.(1990) Generalized Additive Models. Chapman and 
 
 McCullagh, P., Nelder, J. A. (1989). Generalized Linear Models. Chapman and Hall, 2nd edition, London
 }
-\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+\author{Washington Leite Junger \email{wjunger@ims.uerj.br} and Antonio Ponce de Leon \email{ponce@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}, \code{\link{residuals.pgam}}}
 \examples{
