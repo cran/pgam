@@ -4,10 +4,9 @@
 \description{Fit Poisson-Gamma Additive Models using the roughness penalty approach
 }
 \usage{
-pgam(formula, dataset, omega = 0.5, beta = 0.1, offset = 1, digits = getOption("digits"),
-maxit = 100, eps = 1e-06, control = list(trace = 10, REPORT = 10, maxit = 100, abstol = 1e-04,
-reltol = 0.001, factr = 1e+07, pgtol = 0), optim.method = "BFGS", partial.resid = "response",
-smoother = "spline", bkf.eps = 0.001, bkf.maxit = 100, numerical.se = TRUE, verbose = TRUE)
+pgam(formula, dataset, omega = 0.8, beta = 0.1, offset = 1, digits = getOption("digits"),
+maxit = 100, eps = 1e-06, lfn.scale=1, control = list(), optim.method = "L-BFGS-B", partial.resid = "response",
+smoother = "spline", bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
 }
 \arguments{
   \item{formula}{a model formula. See \code{\link{pgam.parser}} for details}
@@ -18,16 +17,17 @@ smoother = "spline", bkf.eps = 0.001, bkf.maxit = 100, numerical.se = TRUE, verb
   \item{digits}{number of decimal places for printing information out}
   \item{maxit}{convergence control iterations}
   \item{eps}{convergence control criterion}
+  \item{lfn.scale}{scales the likelihood function and is passed to \code{control} in \code{\link{optim}}. Value must be positive to ensure maximization}
   \item{control}{convergence control of \code{\link{optim}}. See its help for details}
-  \item{optim.method}{optimization method for \code{\link{optim}}. See its help for details}
+  \item{optim.method}{optimization method passed to \code{\link{optim}}. Different methods can lead to different results, so the user must attempt to the trade off between speed and robustness. For example, \code{BFGS} is faster but sensitive to starting values and \code{L-BFGS-B} is more robust but slower. See its help for details.}
   \item{partial.resid}{type of partial residual to be used if semiparametric fitting. See \code{\link{residuals.pgam}} for details}
   \item{smoother}{smoother to be used in backfitting. See \code{\link{pgam.smooth}} for details}
   \item{bkf.eps}{convergence control criterion for the backfitting algorithm}
   \item{bkf.maxit}{convergence control iterations for the backfitting algorithm}
-  \item{numerical.se}{if \code{TRUE} numerical standard error of parameters are returned, else analytical ones are returned}
+  \item{se.estimation}{if \code{numerical} numerical standard error of parameters are returned. If \code{analytical} then analytical extraction of the standard errors is performed. By setting it to \code{none} standard error estimation is avoided}
   \item{verbose}{if \code{TRUE} information during estimation process is printed out}
 }
-\details{There are a lot of details to be written. It will be soon enough.
+\details{There are a lot of details to be written. It will be very soon.
 
 Specific information can be obtained on functions help.
 

@@ -13,7 +13,7 @@
   \item{x}{covariate values for forecasting if the model has covariates. Must have the \eqn{k} rows and \eqn{p} columns}
   \item{\dots}{further arguments passed to method}
 }
-\details{It estimates predicted values, their variances, deviance components, generalized Pearson statistics components, local level, smoothed prediction, forecast and dispersion parameter.
+\details{It estimates predicted values, their variances, deviance components, generalized Pearson statistics components, local level, smoothed prediction and forecast.
 
 Considering a Poisson process and a gamma priori, the predictive distribution of the model is negative binomial with parameters \eqn{a_{t|t-1}} and \eqn{b_{t|t-1}}. So, the conditional mean and variance are given by
 \deqn{E\left(y_{t}|Y_{t-1}\right)=a_{t|t-1}/b_{t|t-1}}
@@ -26,9 +26,9 @@ Deviance components are estimated as follow
 Generalized Pearson statistics has the form
 \deqn{X^{2}=\sum_{t=\tau+1}^{n}\frac{\left(y_{t}b_{t|t-1}-a_{t|t-1}\right)^{2}} {a_{t|t-1}\left(1+b_{t|t-1}\right)}}
 
-Dispersion parameter estimation is computed by
-\deqn{\phi=\frac{X^{2}}{gl_{r}}}
-where \eqn{gl_{r}} is the residuals degrees of freedom.
+Approximate scale parameter is given by the expression
+\deqn{\hat\phi=frac{X^{2}}{edf}}
+where \eqn{edf} is the number o degrees of reedom of the fitted model.
 }
 \value{List with those described in \bold{Details}
 }

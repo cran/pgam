@@ -5,11 +5,12 @@
 Put hyperparameters hessian matrix in the form of omega and beta standard error.
 }
 \usage{
-pgam.hes2se(hes, fperiod)
+pgam.hes2se(hes, fperiod, se.estimation="numerical")
 }
 \arguments{
   \item{hes}{hessian matrix returned by \code{optim}}
   \item{fperiod}{vector containing as many seasonal factors as there are in model formula}
+  \item{se.estimation}{indicate what method is used to extract the stardard errors}
 }
 \value{List containing the hyperparameters \eqn{omega} and \eqn{beta} standard errors.
 }

@@ -13,7 +13,7 @@
 }
 \details{An approximate measure of parsimony of the Poisson-Gama Additive Models can be achieved by the expression
 \deqn{AIC=\left(D\left(y;\hat\mu\right)+2gle\right)/\left(n-\tau\right)}
-where \eqn{gle} is the number of degrees of freedom of the model and \eqn{\tau} is the index of the first non-zero observation.
+where \eqn{gle} is the number of degrees of freedom of the fitted model and \eqn{\tau} is the index of the first non-zero observation.
 }
 \value{The approximate AIC value of the fitted model.
 }

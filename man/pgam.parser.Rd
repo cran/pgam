@@ -32,16 +32,7 @@ Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
 }
 \note{This function is not intended to be called directly.
 }
-\seealso{
-\code{\link{pgam}}, \code{\link{f}}, \code{\link{g}}
-}
-\examples{
-library(pgam)
-data(aihrio)
-attach(aihrio)
-form <- ITRESP5~f(WEEK)+HOLIDAYS+offset(rain)+PM+g(tmpmax,7)+g(wet,3)
-
-}
+\seealso{\code{\link{pgam}}, \code{\link{f}}, \code{\link{g}}}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

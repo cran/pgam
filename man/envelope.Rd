@@ -5,13 +5,15 @@
 \description{A normal plot with simulated envelope of the residual is produced.
 }
 \usage{
-envelope(object, type = "deviance", size = 0.95, rep = 20, epsilon = 0.001, maxit = 100, plot = TRUE, verbose = FALSE, ...)
+envelope(object, type = "deviance", size = 0.95, rep = 19, optim.method=NULL, 
+epsilon = 0.001, maxit = 100, plot = TRUE, verbose = FALSE, ...)
 }
 \arguments{
   \item{object}{object of class \code{pgam} holding the fitted model}
   \item{type}{type of residuals to be extracted. Default is \code{deviance}. Options are described in \code{\link{residuals.pgam}}}
   \item{size}{value giving the size of the envelope. Default is \code{.95} which is equivalent to a 95\% band}
-  \item{rep}{number of replications for envelope construction. Default is \code{20}}
+  \item{rep}{number of replications for envelope construction. Default is \code{19}}, that is the smallest 95\% band that can be build
+  \item{optim.method}{optimization method to be passed to \code{\link{pgam}} and therefore to \code{\link{optim}}}
   \item{epsilon}{convergence control to be passed to \code{\link{pgam}}}
   \item{maxit}{convergence control to be passed to \code{\link{pgam}}}
   \item{plot}{if \code{TRUE} a plot of the envelope is produced}
@@ -30,16 +32,6 @@ Atkinson, A. C. (1985) Plots, transformations and regression : an introduction t
 \author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}, \code{\link{predict.pgam}}, \code{\link{residuals.pgam}}}
-\examples{
-library(pgam)
-data(aihrio)
-attach(aihrio)
-form <- ITRESP5~f(WEEK)+HOLIDAYS+rain+PM+g(tmpmax,7)+g(wet,3)
-m <- pgam(form,aihrio,omega=.8,beta=.01,maxit=1e2,eps=1e-4,optim.method="BFGS",partial.resid="response")
-
-e <- envelope(m)
-
-}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

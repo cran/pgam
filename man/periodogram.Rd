@@ -26,17 +26,6 @@ Diggle, P. J. (1989) Time Series : A Biostatistical Introduction. Oxford Univers
 \author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}, \code{\link{intensity}}}
-\examples{
-library(pgam)
-data(aihrio)
-attach(aihrio)
-form <- ITRESP5~f(WEEK)+HOLIDAYS+rain+PM+g(tmpmax,7)+g(wet,3)
-m <- pgam(form,aihrio,omega=.8,beta=.01,maxit=1e2,eps=1e-4,optim.method="BFGS",partial.resid="response")
-
-r <- resid(m)
-p <- periodogram(r)
-
-}
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}

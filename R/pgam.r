@@ -31,6 +31,7 @@
 # 20/02/2004  one second faster, predict.pgam(), pgam.fit() and pgam.likelihood() are compiled C code now, new examples added to documentation - version 0.3.2
 # 21/02/2004  X11() call removed
 # 17/03/2004  some bugs fixed, some docs corrected, no more references to dispersion parameter, se of last seasonal factor, periodogram fixed, ... - version 0.3.3
+# 15/04/2004  some bugs fixed, compliance with R version 1.9.0, default (preferred) optimization method moved to L-BFGS-B, approximate dispersion parameter back, light docs on envelope, ...
 # 
 #
 # To do list:
@@ -164,6 +165,8 @@ fnz <- fnz(y)
 n <- length(y)
 psi <- pgam.par2psi(par,fperiod)
 
+#print(psi$beta)  # for debugging
+
 if (!is.null(psi$beta))
 	eta <- x%*%psi$beta+offset  # parametric piece of predictor
 else
@@ -287,12 +290,12 @@ return(retval)
 }
 
 
-pgam.hes2se <- function(hes,fperiod)
+pgam.hes2se <- function(hes,fperiod,se.estimation="numerical")
 # puts parameters hessian matrix in the form of beta s.e.
 {
 sigma <- try(solve(-hes))
 
-alpha <- sigma[1]
+alpha <- sigma[1,1]
 se.w <- sqrt(alpha*(exp(alpha)/(1+exp(alpha))^2)^2)  # correcting sigma^2_{omega} using delta rule James, B. (1996), Probabilidade:..., p.253
 
 beta <- NULL
@@ -333,7 +336,7 @@ return(retval)
 }
 
 
-pgam <- function(formula,dataset,omega=0.5,beta=0.1,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,control=list(trace=10,REPORT=10,maxit=1e2,abstol=1e-4,reltol=1e-3,factr=1e7,pgtol=0),optim.method="BFGS",partial.resid="response",smoother="spline",bkf.eps=1e-3,bkf.maxit=1e2,numerical.se=TRUE,verbose=TRUE)
+pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,lfn.scale=1,control=list(),optim.method="L-BFGS-B",partial.resid="response",smoother="spline",bkf.eps=1e-3,bkf.maxit=1e2,se.estimation="numerical",verbose=TRUE)
 # estimates Poisson-Gamma Additive Models
 {
 st <- proc.time()
@@ -350,6 +353,7 @@ if (!verbose)
 	control$trace <- 0
 	control$REPORT <- maxit
 	}
+control$fnscale <- lfn.scale*(-1)
 
 parsed <- pgam.parser(formula)  # parse the formula and get components
 
@@ -445,7 +449,7 @@ assign("loglik",NULL,env=pgam.env)
 # mle estimation
 par <- pgam.psi2par(omega,beta,fperiod)
 
-optimized <- optim(par,pgam.likelihood,y=y,x=px,offset=offset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=FALSE,control=c(control,fnscale=-1,))
+optimized <- optim(par,pgam.likelihood,y=y,x=px,offset=offset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=FALSE,control=control)
 newoffset <- offset  # case of full parametric model
 
 # smoothing
@@ -484,7 +488,7 @@ if (!is.null(sx))
             # oldetas <- etas
             loglik0 <- loglik1
             # parametric fitting
-            optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=FALSE,control=c(control,fnscale=-1,))
+            optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=FALSE,control=control)
             }
          else
 		 	{
@@ -495,10 +499,15 @@ if (!is.null(sx))
         }
 	}
 
+# debugging
+#mypsi<-pgam.par2psi(optimized$par,fperiod)
+#print(mypsi)
+
 # last running in order to get evaluated functions and hessian matrix
 if (verbose)
 	cat("\nFinal run: Getting estimated parameters, functions and numerical hessian matrix...\n")
-optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=numerical.se,control=c(control,fnscale=-1,))
+numerical.se <- ifelse(se.estimation=="numerical",TRUE,FALSE)
+optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=numerical.se,control=control)
 psi <- pgam.par2psi(optimized$par,fperiod)
 if (!is.null(sx))
 	{
@@ -548,11 +557,11 @@ loglik <- get("loglik",env=pgam.env)
 att1 <- loglik$att1
 btt1 <- loglik$btt1
 
-# corrected estimated residuals degrees of freedom
+# corrected estimated residuals degrees of freedom (including ^w)
 if (!is.null(bkf))
-	edf <- kp+fnz+sum(bkf$edf)
+	edf <- kp+fnz+sum(bkf$edf)+1
 else
-	edf <- kp+fnz
+	edf <- kp+fnz+1
 resdf <- n-edf
 
 dataset <- deparse(substitute(dataset))
@@ -594,11 +603,11 @@ else if (type == "std_deviance")
 	resid <- sign(raw)*sqrt(d/(1-h))
 #else if (type == "std_scl_deviance")
 #	resid <- sign(raw)*sqrt(d/(phi*(1-h)))
-else if (type == "adj_deviance")
-	{
-    skew <- (2-btt1)/sqrt(att1*(1-btt1))  # skewness coeficient of negative binomial distribution
-	resid <- sign(raw)*sqrt(d)*skew
-    }
+#else if (type == "adj_deviance")
+#	{
+#    skew <- (2-att1)/sqrt(btt1*(1-att1))  # skewness coeficient of negative binomial distribution
+#	resid <- sign(raw)*sqrt(d)*skew
+#   }
 else
 	stop(paste("Residuals of type",type,"is not implmented yet."))
 
@@ -686,7 +695,7 @@ else if (model == "levelonly")
 # residuals are to be extracted elsewhere
 
 # scale parameter based on generalized Pearson statitics
-#scale <- sum(oo$pearson,na.rm=TRUE)/object$resdf
+scale <- sum(oo$pearson,na.rm=TRUE)/object$resdf
 
 # cleaning the house
 oo$yhat[1:fnz] <- NA
@@ -697,7 +706,8 @@ oo$pearson[1:fnz] <- NA
 # forecasting
 if (forecast)
 	{
-	stop("Forecasting not fully implemented yet.\n")
+	if (model == "semiparametric")
+		stop("Forecasting of semiparametric models is not implemented yet.\n")
 	fc <- double(k)
 	if (model == "levelonly")
 		for (l in 1:k)
@@ -719,7 +729,7 @@ if (forecast)
 	forecast <- fc
 	}
 
-retval <- list(yhat=oo$yhat,vyhat=oo$vyhat,deviance=oo$deviance,pearson=oo$pearson,hat=hat,level=level,yhats=yhats,forecast=forecast)
+retval <- list(yhat=oo$yhat,vyhat=oo$vyhat,deviance=oo$deviance,pearson=oo$pearson,scale=scale,hat=hat,level=level,yhats=yhats,forecast=forecast)
 return(retval)
 }
 
@@ -769,7 +779,7 @@ predicted <- predict(object,...)
 nprime <- object$n-object$tau
 deviance <- sum(predicted$deviance,na.rm=TRUE)
 edf <- object$edf
-# phi <- predicted$scale
+#phi <- predicted$scale
 
 # retval <- (1/nprime)*(deviance+k*edf*phi)
 retval <- (1/nprime)*(deviance+k*edf)
@@ -794,7 +804,7 @@ alg.norm <- object$alg.norm
 # goodness-of-fit statistics
 deviance <- sum(predicted$deviance,na.rm=TRUE)
 pearson <- sum(predicted$pearson,na.rm=TRUE)
-# scale <- predicted$scale
+scale <- predicted$scale
 edf <- object$edf
 res.edf <- object$resdf
 # maximum likelihood parameters and hypothesis testing
@@ -820,7 +830,7 @@ else
 	pchi.smo <- NULL
 	}
 
-retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
+retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,scale=scale,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
 class(retval) <- "summary.pgam"
 return(retval)
 }
@@ -853,8 +863,8 @@ if (x$alg.k > 0)
 else
 	cat("\nFull parametric model estimated.\n")
 cat("\nResidual deviance is ",round(x$deviance,digits)," on ",x$res.edf," estimated degrees of freedom.\n",sep="")
-# cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
-cat("\nGeneralized Pearson statistics is ",round(x$pearson,digits),".\n",sep="")
+cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
+# cat("\nGeneralized Pearson statistics is ",round(x$pearson,digits),".\n",sep="")
 cat("\nDiffuse initialization wasted the ",x$tau," first observation(s).\n",sep="")
 }
 
@@ -892,7 +902,11 @@ if (!is.null(edf))
 			get(getOption("device"))()
 		else
 			if (interactive())
-				readline("Press ENTER for next page....")
+				{
+				prompt <- readline("Press ENTER for next page or X to exit and keep this page... ")
+				if((prompt == "x") || (prompt == "X"))
+					break
+				}
 		
 		# must be in appropriate order
 		x <- as.data.frame(x.g[order(x.g[,i]),])
@@ -903,7 +917,7 @@ if (!is.null(edf))
 		}
 	}
 else
-	cat("\nFull parametric model. Nothing left for plot.pgam() function to do.\n")
+	cat("\nFull parametric model. Nothing left for plot.pgam() to do.\n")
 }
 
 
@@ -1150,15 +1164,17 @@ return(retval)
 }
 
 
-envelope <- function(object,type="deviance",size=.95,rep=20,epsilon=1e-3,maxit=1e2,plot=TRUE,verbose=FALSE,...)
+envelope <- function(object,type="deviance",size=.95,rep=19,optim.method=NULL,epsilon=1e-3,maxit=1e2,plot=TRUE,verbose=FALSE,...)
 # simulates and plots an envelope of residuals based on A. C. Atkinson book
 {
 if (class(object) == "pgam")
 	{
 	st <- proc.time()
-	if (rep < 20)
-        stop("Number of replications must be greater than 20.")
+	if (rep < 19)
+        stop("Number of replications must equal or be greater than 19.")
 	
+	if (is.null(optim.method))
+		optim.method <- object$optim.method
 	n <- object$n
 	tau <- object$tau
 	dataset <- as.data.frame(eval(parse(text=object$dataset)))
@@ -1175,10 +1191,10 @@ if (class(object) == "pgam")
 		else
 			cat(paste("[",i,"]",sep=""))
 		SIMRESP <- rpois(n,fitted)
-        runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=object$optim.method,partial.resid=object$partial.resid,numerical.se=FALSE,verbose=verbose)
+        runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=optim.method,partial.resid=object$partial.resid,se.estimation="none",verbose=verbose,lfn.scale=1e3)
         # for now these will be the defaults ---> must be changed!
 		runningresid <- resid(runningmodel,type)[(tau+1):n]
-		e[,i] <- sort(runningresid)
+		e[,i] <- sort(runningresid,na.last=TRUE,method="shell")
 		}
 
 	e1 <- numeric(n-tau)
@@ -1187,11 +1203,11 @@ if (class(object) == "pgam")
 	for (i in 1:(n-tau))
         {
         eo <- sort(e[i,])
-        e1[i] <- eo[round(((1-size)/2)*rep,0)]
-        e2[i] <- eo[round(((1+size)/2)*rep,0)]
+        e1[i] <- eo[ceiling(((1-size)/2)*rep)]
+        e2[i] <- eo[ceiling(((1+size)/2)*rep)]
         }
-	residmean <- apply(e,1,mean)
-	band <- range(resid,e1,e2)
+	residmean <- apply(e,1,mean,na.rm=TRUE)
+	band <- range(resid,e1,e2,na.rm=TRUE)
 
 	et <- proc.time()
 	if (verbose)
@@ -1208,7 +1224,7 @@ else if (class(object) == "envelope")
 	e2 <- object$ub
 	residmean <- object$mean
 	resid <- object$residuals
-	band <- range(resid,e1,e2)
+	band <- range(resid,e1,e2,na.rm=T)
 	}
 
 # plotting the envelope
@@ -1216,7 +1232,7 @@ if (plot)
 	{
 	qqnorm(e1,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=1,lwd=1,col="red",bg="white")
 	par(new=TRUE)
-	qqnorm(e2,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=1,lwd=1,col="red",,bg="transparent")
+	qqnorm(e2,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=1,lwd=1,col="red",bg="transparent")
 	par(new=TRUE)
 	qqnorm(residmean,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=2,col="blue",bg="transparent")
 	par(new=TRUE)
@@ -1229,9 +1245,19 @@ if (class(object) == "pgam")
 
 .First.lib <- function(lib, pkg)
 {
-ver <- package.description("pgam")[c("Version")]
+if (eval(parse(text=R.Version()$major)) > 1 || eval(parse(text=R.Version()$minor)) >= 9)
+	{
+	ver <- packageDescription("pgam")[c("Version")]
+	require("stats",quietly=TRUE,warn.conflicts=FALSE)
+	}
+else
+	{
+	# for backward compatibility
+	ver <- package.description("pgam")[c("Version")]
+	require("modreg",quietly=TRUE,warn.conflicts=FALSE)
+	}
+	
 cat(paste("This is pgam library version",ver,"by\nWashington Junger <wjunger@ims.uerj.br>\n"))
-require("modreg",quietly=TRUE,warn.conflicts=FALSE)
 library.dynam("pgam",pkg,lib)
 }
 
