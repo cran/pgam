@@ -1,0 +1,1221 @@
+# This free software is distributed under de GNU GPL version 2 license agreement
+# This source code must be copied and modified since author is cited.
+# This software is free and it is provided with no warranty whatsoever
+# This software can be cited as follow:
+# cite the dissertation the source code is attached:
+#
+# Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+#
+# R code for Poisson-Gamma Additive Models (pgam)
+# it is part of Washington Junger's MSc. dissertations
+# 
+# this class of model will handle only Poisson-Gamma family for a while
+# in the future it is intended to handle Negative Binomial-Beta family also.
+#
+# started in 11/06/2003 (dd/mm/yyyy)
+# last change: (date first)
+# 18/10/2003  up and running (debut) - version 0.1.0
+# 19/10/2003  log(1e-7) changed to log(0.1) when y=0 (very troubling in ZIP) - version 0.1.1
+# 21/10/2003  fixed some bugs, deviance to control convergence and partial deviance residuals in smoothing algorithm - version 0.1.2
+# 22/10/2003  deviance to control convergence (not good) and deviance partial residuals in smoothing algorithm not working - version 0.1.2
+# 24/10/2003  fixed some bugs, trying partial deviance residuals once more (works fine)
+# 15/12/2003  fixed residuals degree of freedom: resdf <- n-kp-sum(sdf)-fnz
+# 17/12/2003  some objects renamed
+# 02/01/2004  backfitting(...) function returns the matrix of partial residuals now - version 0.1.3
+# 03/01/2004  resource consuming envelope plot implemented now, some bugs fixed - version 0.1.4
+# 12/01/2004  function call is returned now - version 0.1.5
+# 05/02/2004  minor changes in envelope routine - version 0.1.6
+# 12/02/2004  several functions re-written, majors changes, finally a library - version 0.2.0
+# 18/02/2004  C code linked, functions re-written, faster than never, documentation ok, fuctions removed others created for perfomance improvement - version 0.3.0 (release version)
+# 19/02/2004  fixed documentation problems - version 0.3.1
+# 20/02/2004  one second faster, predict.pgam(), pgam.fit() and pgam.likelihood() are compiled C code now, new examples added to documentation - version 0.3.2
+#
+# To do list:
+# -----------
+# * properly estimate s.e. of the last seasonal factor (it needs a function like par2psi())
+# * implement the analytical method to estimate information matrix
+# * correct estimation of spectrum
+# * using standardized deviance residuals in envelope can halt function --> to be fixed
+#
+#
+# functions begin here -----------------------
+
+pgam.parser <- function(formula,parent.level=1)
+# reads the model formula and splits it in two new formulae: one of parametric
+# terms and another for smoothed terms. 
+{
+formterms <- terms.formula(formula,specials=c("g","f"))	# s'ed terms is supposed to be smoothed (g) and factorized (f)
+modterms <- attr(formterms,"term.labels") # assigns labels of model terms
+nterms <- length(modterms)	# number of terms in model
+fformula <- NULL
+pformula <- NULL	# parametric formula
+sformula <- NULL  # smoothing formula
+oterm <- NULL  # offset term
+offset <- NULL
+sdf <- NULL  # smoothing df vector
+sfx <- NULL  # smoothing method fixed vector
+findex <- NULL
+pindex <- NULL
+sindex <- NULL
+oindex <- NULL
+fnames <- NULL
+fdata <- NULL
+fperiod <- NULL
+
+response <- attr(formterms,"response") 
+if (!is.null(response))
+	response <- as.formula(paste("~",as.character(attr(formterms,"variables")[2]),sep=""))
+else
+	stop("Response variable not specified.")
+
+if (!is.null(attr(formterms,"specials")$f))
+	findex <- attr(formterms,"specials")$f	# indeces of terms to be factorized in modterms array
+if (!is.null(attr(formterms,"specials")$g))
+	sindex <- attr(formterms,"specials")$g	# indeces of terms to be smoothed in modterms array
+if (!is.null(attr(formterms,"offset")))
+	oindex <- attr(formterms,"offset") # offset location
+
+if (nterms)
+	for (k in 2:(nterms+1))
+		if (!(k %in% sindex) && !(k %in% oindex) && !(k %in% findex))
+    		pindex <- c(pindex,k)  # gets parametric terms indeces
+
+fterms <- length(findex)	# number of terms in factorized formula
+pterms <- length(pindex)	# number of terms in parametric formula
+sterms <- length(sindex)	# number of terms in smooth formula
+
+if (fterms)
+	{
+    for (k in 1:fterms)  # seasonal factors formula - one ocurrence only !!!! must change!!!
+    	{
+    	fed <- eval(parse(text=as.character(attr(formterms,"variables")[findex[k]+1]))) # f extraction
+        for (d in 1:(fed$fperiod-1))
+        	fformula <- paste(fformula,fed$factornames[d],sep=ifelse(is.null(fformula),"~","+"))
+    	fnames <- c(fnames,fed$factornames)
+    	fdata <- c(fdata,fed$factordata)
+        fperiod <- c(fperiod,fed$fperiod)
+		}
+	fformula <- as.formula(fformula)
+    fdata <- as.matrix(as.data.frame(fdata))
+    }
+    
+if (pterms)
+	{
+	for (k in 1:pterms)  # parametric formula
+		pformula <- paste(pformula,as.character(attr(formterms,"variables")[pindex[k]+1]),sep=ifelse(is.null(pformula),"~","+"))
+	pformula <- as.formula(pformula)
+    }
+
+if (sterms)
+	{
+    for (k in 1:sterms)  # non-parametric formula
+    	{
+    	sed <- eval(parse(text=as.character(attr(formterms,"variables")[sindex[k]+1]))) # g extraction
+		sformula <- paste(sformula,sed$var,sep=ifelse(is.null(sformula),"~","+"))
+    	sdf <- c(sdf,sed$df)
+    	sfx <- c(sfx,sed$fx)
+		}
+	sformula <- as.formula(sformula)
+    }
+
+if (!is.null(oindex))  # dealing with the offset term
+	{
+	oterm <- as.character(attr(formterms,"variables")[oindex+1])
+	offset<- eval(parse(text=oterm))
+	}
+	
+# the poisson-gamma model does not have intercept. i will keep this for future use as deterministic drift.   
+if (attr(formterms,"intercept") == 0)
+    drift <- FALSE
+else
+	drift <- TRUE
+
+retval <- list(response=response,pformula=pformula,pterms=pterms,sformula=sformula,sdf=sdf,sfx=sfx,sterms=sterms,fterms=fterms,fformula=fformula,fnames=fnames,fdata=fdata,fperiod=fperiod,oterm=oterm,offset=offset,drift=drift,fullformula=formula)
+class(retval) <- "pgam.split.formula"
+return(retval)
+}
+
+
+pgam.filter <- function(w,y,eta)
+# runs appropriate recursions for omega estimate
+{
+n <- length(y)
+
+oo <- .C("pgam_filter",
+		as.double(w),
+		as.double(y),
+		as.integer(n),
+		as.double(eta),
+		att1=double(n),
+		btt1=double(n),
+		PACKAGE="pgam")
+
+return(list(att1=oo$att1,btt1=oo$btt1))
+}
+
+
+pgam.likelihood <- function(par,y,x,offset,fperiod,env=parent.frame())
+# likelihood function to be maximized
+{
+# splitting parameter vector into omega and beta
+fnz <- fnz(y)
+n <- length(y)
+psi <- pgam.par2psi(par,fperiod)
+
+if (!is.null(psi$beta))
+	eta <- x%*%psi$beta+offset  # parametric piece of predictor
+
+filtered <- pgam.filter(psi$w,y,eta)
+att1 <- filtered$att1
+btt1 <- filtered$btt1
+
+oo <- .C("pgam_loglik",
+		as.double(y),
+		as.integer(n),
+		as.integer(fnz),
+		as.double(att1),
+		as.double(btt1),
+		lvalue=double(1),
+		NAOK=TRUE,
+		PACKAGE="pgam")
+
+loglik <- list(value=oo$lvalue,eta=eta,att1=att1,btt1=btt1)
+assign("loglik",loglik,env=env)
+
+return(oo$lvalue)
+}
+
+
+pgam.fit <- function(w,y,eta,partial.resid)
+# estimates of y_hat_t|t-1
+{
+filtered <- pgam.filter(w,y,eta)
+att1 <- filtered$att1
+btt1 <- filtered$btt1
+
+ynz <- y+0.1*(y==0)  # replaces zero counts by a small value (dangerous!!!)
+n <- length(y)
+fnz <- fnz(y)
+
+oo <- .C("pgam_predict",
+		as.double(y),
+		as.integer(n),
+		as.double(att1),
+		as.double(btt1),
+		yhat=double(n),
+		vyhat=double(n),
+		deviance=double(n),
+		pearson=double(n),
+		PACKAGE="pgam")
+  
+# partial residuals
+if (partial.resid == "response")
+   	presid <- (log(ynz)-log(oo$yhat))[(fnz+1):n]
+else if (partial.resid == "deviance")
+   	presid <- log(sign(y-oo$yhat)*sqrt(oo$deviance))[(fnz+1):n]
+else if (partial.resid == "pearson")
+	presid <- log((y-oo$yhat)/oo$vyhat)[(fnz+1):n]
+
+return(list(yhat=oo$yhat,resid=presid))
+}
+
+
+pgam.psi2par <- function(w,beta,fperiod)
+# puts hyperparameters into optmization form
+{
+alpha <- log(w/(1-w)) # transformation to ensure constraints on w
+fp <- length(fperiod)
+newbeta <- NULL
+
+if (!is.null(beta))
+	{
+	fp <- length(fperiod)
+    bk <- 1
+    
+    if (!is.null(fperiod))
+    	{
+        for (k in 1:fp)
+    		{
+	        newbetak <- beta[bk:(fperiod[k]-1)]
+        	bk <- length(newbetak)+2  # skip the last seasonal factor ex.: saturday, december etc
+        	newbeta <- c(newbeta,newbetak)
+        	}
+    	if (length(beta) > sum(fperiod))
+    		newbeta <- c(newbeta,beta[bk:length(beta)])
+		}
+	else
+    	newbeta <- beta
+    }
+par <- c(alpha,newbeta) # parameter vector to be optimized
+return(par)
+}
+
+
+pgam.par2psi <- function(par,fperiod)
+# puts parameters optmization form back into beta
+{
+alpha <- par[1]
+w <- exp(alpha)/(1+exp(alpha))
+beta <- NULL
+
+if (length(par) > 1)
+	{
+	newbeta <- par[2:length(par)]
+	fp <- length(fperiod)
+	bk <- 1
+
+    if (!is.null(fperiod))
+    	{
+		for (k in 1:fp)
+    		{
+        	newbetak <- newbeta[bk:(bk+fperiod[k]-2)]  # get pieces of beta from par
+        	bk <- length(newbetak)+1
+        	beta <- c(beta,newbetak,-sum(newbetak))
+        	}
+	    if (length(newbeta) >= sum(fperiod))  # something odd is going on about here!
+		    beta <- c(beta,newbeta[bk:length(newbeta)])
+		}
+	else
+    	beta <- newbeta
+    }
+retval <- list(w=w,beta=beta)
+return(retval)
+}
+
+
+pgam.hes2se <- function(hes,fperiod)
+# puts parameters hessian matrix in the form of beta s.e.
+{
+alpha <- hes[1]
+w <- exp(alpha)/(1+exp(alpha))
+beta <- NULL
+
+if (length(hes) > 1)
+	{
+	newbeta <- hes[2:length(hes)]
+	fp <- length(fperiod)
+	bk <- 1
+
+    if (!is.null(fperiod))
+		for (k in 1:fp)
+    		{
+        	newbetak <- newbeta[bk:(bk+fperiod[k]-2)]  # get pieces of beta from par
+        	bk <- length(newbetak)+1
+        	beta <- c(beta,newbetak,-sum(newbetak))
+        	}
+    beta <- c(beta,newbeta[bk:length(newbeta)])
+    }
+retval <- list(w=w,beta=beta)
+return(retval)
+}
+
+
+pgam <- function(formula,dataset,omega=0.8,beta=0.01,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,control=list(trace=10,REPORT=10,maxit=1e2,abstol=1e-4,reltol=1e-3,factr=1e7,pgtol=0),optim.method="BFGS",partial.resid="response",smoother="spline",bkf.eps=1e-3,bkf.maxit=1e2,numerical.se=TRUE,verbose=TRUE)
+# estimates Poisson-Gamma Additive Models
+{
+st <- proc.time()
+called <- match.call()
+pgam.env <- new.env(FALSE,NULL)  # new environment defined for pgam
+
+if (is.null(formula))
+	stop("Model formula is not specified.")
+if (is.null(dataset))
+	stop("Model dataset is not specified.")
+
+if (!verbose)
+	{
+	control$trace <- 0
+	control$REPORT <- maxit
+	}
+
+parsed <- pgam.parser(formula)  # parse the formula and get components
+
+# building datasets and setting the model structure (no explanatory variables, seasonal factors, linear, additive, offset, drift)
+response <- framebuilder(parsed$response,dataset)$frame
+yname <- names(response)
+y <- response[[1]]
+n <- length(y)  # get number of obs
+if (sum((y-as.integer(y))>0))
+	{
+    y <- as.integer(y) # non-integer values are truncated
+    cat("Note: Some values must have been truncated in order to ensure compliance with Poisson specification.\n")
+    }
+else
+    y <- as.integer(y) # to avoid type conflict with integer functions
+	
+if (sum(y < 0) > 0)	# checking for negative values. if detected, program halts
+	stop("Negative observations detected. The series does not comply with Poisson specification.")
+fnz <- fnz(y)
+undef <- rep(0,fnz)
+
+etap <- NULL
+px <- NULL
+kx <- 0
+pnames <- NULL
+if (parsed$pterms)
+	{
+    pform <- parsed$pformula
+	px <- framebuilder(pform,dataset)$frame
+    pnames <- names(px)
+    px <- as.matrix(px)
+    kx <- dim(px)[2]  # number of non-seasonal factor explanatory variables
+    }
+
+etas <- NULL
+bkf <- NULL
+sx <- NULL
+sdf <- NULL
+sfx <- NULL
+ks <- 0
+snames <- NULL
+if (parsed$sterms)
+	{
+    sform <- parsed$sformula
+	sx <- framebuilder(sform,dataset)$frame
+    snames <- names(sx)
+    sx <- as.matrix(sx[(fnz+1):n,])
+    sdf <- parsed$sdf
+    sfx <- parsed$sfx
+	ks <- dim(sx)[2] # number of non-parametric explanatory variables
+	}
+
+fx <- NULL
+fp <- 0
+kf <- 0
+fperiod <- NULL
+fnames <- NULL
+if (parsed$fterms)
+	{
+    fform <- parsed$fformula
+	fx <- parsed$fdata
+    fnames <- parsed$fnames
+    fperiod <- parsed$fperiod
+    fp <- length(fperiod)  # number of seasonal factors terms
+    kf <- sum(fperiod) # total count of seasonal factors
+    }
+
+ofactor <- offset
+if (!is.null(parsed$oterm))
+	{
+    offset <- as.matrix(parsed$offset*ofactor)
+	}
+else
+	offset <- rep(0,n)
+
+if (parsed$drift)
+	{
+    # to be worked out
+    }
+
+px <- cbind(fx,px)
+kp <- kx+kf # number of explanatory variables
+
+if (length(beta) == 1)
+	beta <- rep(beta,kp) # expansion of initial value of beta vector (assuming all the same)
+if (kp == 0)
+	beta <- NULL
+if (is.null(px) && !is.null(sx))
+   	stop("This application still not fit full non-linear predictor models.")
+
+assign("loglik",NULL,env=pgam.env)
+
+# mle estimation
+par <- pgam.psi2par(omega,beta,fperiod)
+
+optimized <- optim(par,pgam.likelihood,y=y,x=px,offset=offset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=FALSE,control=c(control,fnscale=-1,))
+newoffset <- offset  # case of full parametric model
+
+# smoothing
+k <- 0  # if k=0 at the end o function, this is a full parametric model
+norm <-0  # same as k
+if (!is.null(sx))
+	{
+    norm <- 1e35  # large number intialization of norm
+    # oldetas <- 0
+    loglik0 <- 0
+    # deviance0 <- 0
+    k <- 0
+    for (k in 1:maxit)
+     	{
+        # getting useful information
+		psi <- pgam.par2psi(optimized$par,fperiod)
+        etap <- px%*%psi$beta  # parametric piece of predictor
+		presid <- pgam.fit(psi$w,y,etap+offset,partial.resid)$resid
+		loglik1 <- (-1)*optimized$value
+        # backfitting smoothing
+        bkf <- backfitting(presid,sx,sdf,sfx,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=FALSE)
+        etas <- c(undef,bkf$sumfx)
+      	newoffset <- offset+etas  # preserves original offset in full eta
+        norm <- abs((loglik1-loglik0)/loglik0)
+		if (verbose)
+			cat(paste("iter:",k," | ","norm:",round(norm,digits),"\n"))
+
+        if (!(norm < eps))
+            {
+	    	if (k > maxit)
+            	{
+            	if (verbose)
+					cat("\nNo convergence after last iteration of the estimation algorithm.\n")
+                break
+            	}
+            # oldetas <- etas
+            loglik0 <- loglik1
+            # parametric fitting
+            optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=FALSE,control=c(control,fnscale=-1,))
+            }
+         else
+		 	{
+			if (verbose)
+				cat("\nSemiparametric model estimation algorithm has converged.\n")
+            break
+			}
+        }
+	}
+
+# last running in order to get evaluated functions and hessian matrix
+if (verbose)
+	cat("\nFinal run: Getting estimated parameters, functions and numerical hessian matrix...\n")
+optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperiod=fperiod,env=pgam.env,method=optim.method,hessian=numerical.se,control=c(control,fnscale=-1,))
+psi <- pgam.par2psi(optimized$par,fperiod)
+if (!is.null(sx))
+	{
+    etap <- px%*%psi$beta  # parametric piece of predictor
+    presid <- pgam.fit(psi$w,y,etap+offset,partial.resid)$resid
+    # backfitting smoothing
+    bkf <- backfitting(presid,sx,sdf,sfx,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=TRUE)
+    # restoring original size of elements in bkf and sx
+	bkf$sumfx <- c(undef,bkf$sumfx)
+    bkf$smox <- rbind(matrix(NA,fnz,ks),bkf$smox)
+	dimnames(bkf$smox) <- list(NULL,snames)
+    bkf$pres <- rbind(matrix(NA,fnz,ks),bkf$pres)
+	dimnames(bkf$pres) <- list(NULL,snames)
+	sx <- rbind(matrix(NA,fnz,ks),sx)
+    }
+
+# getting useful information
+omega <- psi$w
+names(omega) <- c("(Discount)")
+beta <- psi$beta
+se.omega <- NA
+se.beta <- NA
+if (numerical.se)
+	{
+    names(beta) <- c(fnames,pnames)
+    # temporary solution for s.e.
+	covar <- try(solve(-optimized$hessian))
+	se <- pgam.hes2se(sqrt(diag(covar)),fperiod)
+	alpha <- optimized$par[1]
+    se.omega <- se$w*(exp(alpha)/(1+exp(alpha))^2)  # correcting se using delta rule James, B. (1996), Probabilidade:..., p.253
+    names(se.omega) <- c("(Discount)")
+    se.beta <- se$beta
+    se.beta[fperiod[1]] <- NA  # temporary solution to avoid misunderstandings in output
+	names(se.beta) <- c(fnames,pnames)
+    }
+
+iterations <- optimized$counts
+if (verbose)
+	{cat("Counts (fn | gr): ");cat(iterations);cat("\n")}
+
+if (!is.null(optimized$convergence))
+	if (optimized$convergence == 0)
+		{
+        convergence <- "converged"
+        }
+else
+	convergence <- "not converged"
+
+loglik.value <- (-1)*optimized$value
+loglik <- get("loglik",env=pgam.env)
+att1 <- loglik$att1
+btt1 <- loglik$btt1
+
+# corrected estimated residuals degrees of freedom
+if (!is.null(bkf))
+	edf <- kp+fnz+sum(bkf$edf)
+else
+	edf <- kp+fnz
+resdf <- n-edf
+
+dataset <- deparse(substitute(dataset))
+
+et <- proc.time()
+if (verbose)
+	cat(paste("\nEstimation process took", elapsedtime(st,et)),"(hh:mm:ss)\n")
+
+retval <- list(call=called,formula=formula,dataset=dataset,omega=omega,se.omega=se.omega,beta=beta,se.beta=se.beta,att1=att1,btt1=btt1,loglik=loglik.value,convergence=convergence,optim.method=optim.method,y=y,px=px,sx=sx,offset=offset,etap=etap,etas=etas,partial.resid=partial.resid,bkf=bkf,alg.k=k,alg.norm=norm,edf=edf,resdf=resdf,n=n,tau=fnz)
+class(retval) <- "pgam"
+return(retval)
+}
+
+
+residuals.pgam <- function(object,type="deviance",...)
+# method for residuals extraction of a pgam model object
+{
+predicted <- predict(object,...)
+
+# adopting GLM notation for residuals extraction
+y <- object$y
+mu <- predicted$yhat
+v.mu <- predicted$vyhat
+d <- predicted$deviance
+h <- predicted$hat
+att1 <- object$att1
+btt1 <- object$btt1
+phi <- predicted$scale
+
+raw <- y-mu  # getting raw residuals
+
+if (type == "response")
+	resid <- raw
+else if (type == "pearson")
+	resid <- raw/sqrt(v.mu)
+else if (type == "deviance")
+	resid <- sign(raw)*sqrt(d)
+else if (type == "std_deviance")
+	resid <- sign(raw)*sqrt(d/(1-h))
+else if (type == "std_scl_deviance")
+	resid <- sign(raw)*sqrt(d/(phi*(1-h)))
+else if (type == "adj_deviance")
+	{
+    skew <- (2-btt1)/sqrt(att1*(1-btt1))  # skewness coeficient of negative binomial distribution
+	resid <- sign(raw)*sqrt(d)*skew
+    }
+else
+	stop(paste("Residuals of type",type,"is not implmented yet."))
+
+retval <- resid
+return(retval)
+}
+
+
+predict.pgam <- function(object,forecast=FALSE,k=1,x=NULL,...)
+# method for prediction for new values
+{
+# getting goods
+n <- object$n
+y <- object$y
+etap <- object$etap
+etas <- object$etas
+w <- object$omega
+
+# estimates of y_hat_t|t-1
+if (is.null(etap) && !(is.null(etas)))
+	{
+	model <- "nonparametric"
+	etap <- rep(0,n)
+	}
+else if (!is.null(etap) && is.null(etas))
+	{
+	model <- "fullparametric"
+	etas <- rep(0,n)
+	}
+else if (is.null(etap) && is.null(etas))
+	{
+	model <- "levelonly"
+	etap <- rep(0,n)
+	etas <- rep(0,n)
+	}
+else
+	model <- "semiparametric"
+
+eta <- etap+etas
+
+filtered <- pgam.filter(w,y,eta)
+att1 <- filtered$att1
+btt1 <- filtered$btt1
+
+n <- length(y)
+hat <- double(n)
+fnz <- fnz(y)
+level <- NULL
+yhats <- NULL
+
+oo <- .C("pgam_predict",
+		as.double(y),
+		as.integer(n),
+		as.double(att1),
+		as.double(btt1),
+		yhat=double(n),
+		vyhat=double(n),
+		deviance=double(n),
+		pearson=double(n),
+		PACKAGE="pgam")
+
+for (t in 1:(n-1))
+	{
+	# pseudo hat matrix
+   	hat[t] <- w*exp(eta[t+1])/sum(w^(0:(t-1))*exp(eta[t:1]),na.rm=TRUE)
+	}
+
+# an attempt of extraction of components
+if (model == "semiparametric")
+	{
+    # semiparametric model
+    plevel <- oo$yhat*exp(-etap)
+	level <- plevel*exp(-etas)
+	yhats <- plevel/level
+    }
+else if (model == "fullparametric")
+	{
+    # full parametric model
+    level <- oo$yhat*exp(-etap)
+    yhats <- NULL
+    }
+else if (model == "levelonly")
+	level <- oo$yhat
+
+# residuals are to be extracted elsewhere
+
+# scale parameter based on generalized Pearson statitics
+scale <- sum(oo$pearson,na.rm=TRUE)/object$resdf
+
+# cleaning the house
+oo$yhat[1:fnz] <- NA
+oo$vyhat[1:fnz] <- NA
+oo$deviance[1:fnz] <- NA
+oo$pearson[1:fnz] <- NA
+    
+# forecasting
+if (forecast)
+	{
+	fc <- double(k)
+	if (model == "levelonly")
+		for (l in 1:k)
+			fc[l] <- sum(w^(0:(n-1))*y[n:1],na.rm=TRUE)/sum(w^(0:(n-1)),na.rm=TRUE)
+	else
+		{
+		if (!is.null(x))
+			{
+			etaf <- x%*%beta
+			for (t in 1:k)
+				fc[l] <- w*exp(etaf[n+l])*sum(w^(0:(n-1))*y[n:1],na.rm=TRUE)/sum(w^(0:(n-1))*exp(eta[n:1]),na.rm=TRUE)
+			}
+		else
+			{
+			cat("\nCovariates were not supplied. Forecasting is not possible.\n")
+			fc <- NULL
+			}
+		}	
+	forecast <- fc
+	}
+
+retval <- list(yhat=oo$yhat,vyhat=oo$vyhat,deviance=oo$deviance,pearson=oo$pearson,hat=hat,level=level,yhats=yhats,forecast=forecast,scale=scale)
+return(retval)
+}
+
+
+fitted.pgam <- function(object,...)
+# method for fitted extraction only
+{
+predicted <- predict(object,...)
+
+retval <- predicted$yhat
+return(retval)
+}
+
+
+coef.pgam <- function(object,...)
+# method for parametric coefficients extraction. although omega is not a coef, it is output at first slot.
+{
+retval <- c(object$omega,object$beta)
+return(retval)
+}
+
+
+logLik.pgam <- function(object,...)
+# logLik method for extraction of loglik from a pgam object
+{
+retval <- object$loglik
+return(retval)
+}
+
+
+deviance.pgam <- function(object,...)
+# deviance method for extraction of deviance from a pgam object
+{
+predicted <- predict(object,...)
+
+retval <- sum(predicted$deviance,na.rm=TRUE)
+return(retval)
+}
+
+
+AIC.pgam <- function(object,k=2,...)
+# method for AIC estimation of a pgam model object
+{
+predicted <- predict(object,...)
+
+# gathering necessary quantities
+nprime <- object$n-object$tau
+deviance <- sum(predicted$deviance,na.rm=TRUE)
+edf <- object$edf
+phi <- predicted$scale
+
+retval <- (1/nprime)*(deviance+k*edf*phi)
+return(retval)
+}
+
+
+summary.pgam <- function(object,...)
+# method for output summary of pgam model object
+{
+predicted <- predict(object,...)
+
+# general stuff
+call <- object$call
+formula <- object$formula
+convergence <- object$convergence
+optim.method <- object$optim.method
+n <- object$n
+tau <- object$tau
+alg.k <- object$alg.k
+alg.norm <- object$alg.norm
+# goodness-of-fit statistics
+deviance <- sum(predicted$deviance,na.rm=TRUE)
+pearson <- sum(predicted$pearson,na.rm=TRUE)
+scale <- predicted$scale
+edf <- object$edf
+res.edf <- object$resdf
+# maximum likelihood parameters and hypothesis testing
+loglik <- object$loglik
+coeff <- c(object$omega,object$beta)
+se.coeff <- c(object$se.omega,object$se.beta)
+t.coeff <- coeff/se.coeff
+pt.coeff <- 2*(1-pt(abs(t.coeff),df=res.edf))
+if (!is.null(object$bkf))
+	{
+	# nonparametric stuff
+	vars.smo <- dimnames(object$bkf$smox)[[2]]
+	edf.smo <- object$bkf$edf
+	# approximate F-tests must be inserted at this point (soon!)
+	chi.smo <- as.double(rep(NA,length(vars.smo)))
+	pchi.smo <- as.double(rep(NA,length(vars.smo)))
+	}
+else
+	{
+	vars.smo <- NULL
+	edf.smo <- NULL
+	chi.smo <- NULL
+	pchi.smo <- NULL
+	}
+
+retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,scale=scale,edf=edf,res.edf=res.edf,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
+class(retval) <- "summary.pgam"
+return(retval)
+}
+
+
+print.summary.pgam <- function(x,digits=getOption("digits"),...)
+# method for summary printing
+{
+cat("Function call:\n")
+print(x$call)
+cat("\nModel formula:\n")
+print(x$formula)
+cat("\nParametric coefficients:\n")
+width <- max(nchar(names(x$coeff)))+2
+cat(rep(" ",width),"     Estimate     std. err.     t ratio      Pr(>|t|)\n",sep="")
+for (i in 1:length(x$coeff))
+    cat(formatC(names(x$coeff)[i],width=width)," ",formatC(x$coeff[i],width=digits+6,digits=digits)," ",formatC(x$se.coeff[i],width=digits+6,digits=digits)," ",formatC(x$t.coeff[i],width=digits+6,digits=digits),"    ",format.pval(x$pt.coeff[i]),"\n",sep="")
+# nonparametric partition of the model
+if (!is.null(x$vars.smo))
+	{
+	cat("\nApproximate significance of smooth terms:\n")
+    width <- max(nchar(x$vars.smo))+2
+    cat(rep(" ",width),"           edf       chi.sq     p-value\n",sep="")
+    for (i in 1:length(x$vars.smo))
+		cat(formatC(x$vars.smo[i],width=width)," ",formatC(x$edf.smo[i],width=digits+6,digits=digits),"   ",formatC(x$chi.smo[i],width=digits+6,digits=digits),"     ",format.pval(x$pchi.smo[i]),"\n",sep="")
+	}
+cat("\nLog-likelihood value is ",round(x$loglik,digits)," after ",x$optim.method," has ",x$convergence,".\n",sep="")
+if (x$alg.k > 0)
+	cat("\nEstimation process of semiparametric model stopped after ",x$alg.k," iterations at ",round(x$alg.norm),".\n",sep="")
+else
+	cat("\nFull parametric model estimated.\n")
+cat("\nResidual deviance is ",round(x$deviance,digits)," on ",x$res.edf," estimated degrees of freedom.\n",sep="")
+cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
+cat("\nDiffuse initialization wasted the ",x$tau," first observation(s).\n",sep="")
+}
+
+
+plot.pgam <- function(x,rug=TRUE,se=TRUE,at.once=FALSE,...)
+# method for smooth terms plotting
+{
+predicted <- predict(x,...)
+
+#gathering some useful information
+n <- x$n
+y.level <- predicted$level
+x.level <- seq(1:n)
+edf <- x$bkf$edf
+
+# plotting level
+plot(x.level,y.level,type="l",xlab="time",ylab="local level",...)
+if (rug)
+	rug(x.level)
+
+# plotting smoothed covariates in predictor scale
+if (!is.null(edf))
+	{
+	s <- length(edf)
+	vars.smo <- dimnames(x$bkf$smox)[[2]]
+	x.g <- x$sx
+	y.g <- x$bkf$smox
+	# setting same scale to smoothed covariates plots - must be updated when plotting se band!!!
+	y.g.lim <- c(min(y.g,na.rm=TRUE),max(y.g,na.rm=TRUE))
+	#setting labels
+	y.g.lab <- paste("g(",vars.smo,",",edf,")",sep="")
+	for (i in 1:s)
+		{
+		if (at.once)
+			X11()
+		else
+			if (interactive())
+				readline("Press ENTER for next page....")
+		# must be in appropriate order
+		x <- x.g[order(x.g[,i]),]
+		y <- y.g[order(x.g[,i]),]
+		plot(x[,i],y[,i],type="l",ylim=y.g.lim,xlab=vars.smo[i],ylab=y.g.lab[i],...)
+		rug(x.g[,i])
+		}
+	}
+else
+	cat("\nFull parametric model. Nothing left for plot.pgam() function to do.\n")
+}
+
+
+f <- function(factorvar)
+# builds factor data matrix
+{
+factorname <- deparse(substitute(factorvar))
+factorvar <- as.matrix(factorvar)
+n <- length(factorvar)
+m <- max(factorvar)
+factordata <- as.data.frame(matrix(NA,n,m))
+datanames <- NULL
+for (k in 1:m)
+	{
+    factordata[k] <- 1*(factorvar == k)
+    datanames <- c(datanames,paste(factorname,k,sep="."))
+    }
+names(factordata) <- datanames
+
+retval <- list(factordata=factordata,factornames=datanames,fperiod=m)
+class(retval) <- "pgam.factor.info"
+return(retval)
+}
+
+
+g <- function(var,df,fx=TRUE)
+# extracts spline information from the formula term g(var,df,fx)
+{
+varname <- deparse(substitute(var))
+retval <- list(var=varname,df=df,fx=fx)
+class(retval) <- "pgam.spline.info"
+return(retval)
+}
+
+
+fnz <- function(y)
+# returns first non-zero observation index (base 1)
+{
+for (t in 1:length(y))
+	if (y[t] > 0)
+    	return(t)
+}
+
+
+framebuilder <- function(formula,dataset)
+# builds a data frame from the dataset given the formula
+{
+if (!is.null(formula))
+	frame <- model.frame(formula,dataset)
+else
+	frame <- NULL
+retval <- list(frame=frame)
+class(retval) <- "pgam.data.frame"
+return(retval)
+}
+
+
+backfitting <- function(y,x,df,fx,smoother="spline",w=rep(1,length(y)),eps=1e-3,maxit=1e2,info=TRUE)
+# ajust the non-parametric piece of predictor
+{
+# getting useful information
+n <- dim(x)[1]	# number of observations
+p <- dim(x)[2]	# number of variables to be smoothed
+
+# initialization
+smox <- matrix(0,n,p)  # create storage space for smoothed variables
+pres <- matrix(0,n,p)  # create storage space for partial residuals variables
+lev <- matrix(0,n,p)  # create storage space for smoother leverage
+edf <- double(p)  # create storage space for edf
+norm <- 1e35	# large value
+smooth <- rep(0,n)
+m <- 0
+
+#backfitting
+while ((norm >= eps) && (m <= maxit))
+	{
+	m <- m+1
+    oldsmooth <- smooth
+    smooth <- rep(0,n)
+    for (j in 1:p)
+		{
+		sumfx <- rep(0,n)
+        for (k in 1:p)
+            smox[,k] <- (k!=j)*pgam.smooth(y,x[,k],df[k],fx[k],smoother=smoother,w=w)$fitted
+        for (k in 1:p)
+            sumfx <- sumfx+(k!=j)*smox[,k]
+        pres[,j] <- y-sumfx
+        smoothed <- pgam.smooth(pres[,j],x[,j],df[j],fx[j],smoother=smoother,w=w)
+		smox[,j] <- smoothed$fitted
+#		lev[,j] <- smoothed$lev
+#		edf[j] <- smoothed$df
+        smooth <- smooth+smox[,j]
+        }
+    
+	norm <- lpnorm(smooth,oldsmooth,p=2)/lpnorm(oldsmooth,p=2)
+	}
+
+sumfx <- apply(smox,1,sum)  # sum of fx
+if (!info)
+	{
+	# short returning list - intended to be fast!
+	retval <- list(sumfx=sumfx)
+	}
+else
+	{
+	# complete returning list - slower!
+	
+	# in future, when cross-validation be implemented, this will handle the estimated degrees of freedom according to the approximation of Hastie & Tibshirani (1990) given by df_j=trH_j(lambda_j)-1. as df is supposed to be fixed (yet), this will only penalize de degrees of freedom of the spline g_j
+	edf <- df-1
+	retval <- list(sumfx=sumfx,smox=smox,pres=pres,lev=lev,edf=edf)
+	}
+class(retval) <- "backfitting"
+return(retval)
+}
+
+
+pgam.smooth <- function(y,x,df,fx,smoother="spline",w=rep(1,length(y)))
+# smooths y against x wiht ds degrees of smoothness
+{
+if (smoother=="spline")
+	{
+	smoothed <- smooth.spline(x=x,y=y,w=w,df=df)
+	fitted <- predict(smoothed,x)$y
+	lev <- smoothed$lev
+	df <- smoothed$df
+	}
+#else if (smoother=="loess")
+#	{
+#	tempds <- as.data.frame(cbind(y,x))	# temporary dataset
+#	names(tempds) <- c("y","x")
+#	fitted <- loess(as.formula("y~x"),tempds,weights=w,span=1/df)$fitted
+#   retval <- list(fitted=fitted)
+#	}
+else
+	stop(paste("Smoother",smoother,"not implemented yet."))
+
+retval <- list(fitted=fitted,lev=lev,df=df)    
+return(retval)
+}
+
+
+elapsedtime <- function(st,et)
+# Computes the elapsed time between st (start time) and et (end time)
+{
+time <- et[3]-st[3]	# gets time from the third position of the vectors
+h <- trunc(time/3600)
+if (h<10)
+	hs <- paste("0",h,sep="",collapse=" ")
+else
+	hs <- h
+time <- time-h*3600
+min <- trunc(time/60)
+if (min<10)
+	mins <- paste("0",min,sep="",collapse=" ")
+else
+	mins <- min
+time <- time-min*60
+sec <- trunc(time)
+if (sec<10)
+	secs <- paste("0",sec,sep="",collapse=" ")
+else
+	secs <- sec
+
+retval <- paste(hs,":",mins,":",secs,sep="",collapse=" ")
+return(retval)
+}
+
+
+link <- function(x,link="log",inv=FALSE)
+# apllies the link function
+{
+if (link=="log")
+	{
+	if (!inv)
+		linked <- log(x)
+	else
+		linked <- exp(x)
+	}
+else
+	stop(paste("Link funtion",link,"not implemented yet."))
+return(linked)
+}
+
+
+lpnorm <- function(seq1,seq2=0,p=0)
+# returns the Lp-norm. If p=0 then Infinity norm is returned
+{
+if (p == 0)
+	norm <- max(abs(seq1-seq2),na.rm=TRUE)
+if (p == 1)
+	norm <- sum(abs(seq1-seq2),na.rm=TRUE)
+if (p >= 2)
+	norm <- sum((seq1-seq2)^p,na.rm=TRUE)
+if (p > 2)
+	warning("Lp-norm where p is greater than 2 is quite unusual.")
+
+return(norm)
+}
+
+
+intensity <- function(x,n,y)
+# spectral analysis of series y
+{
+t <- seq(1:n)
+
+sp <- ((sum(y*cos(x*t)))^2+(sum(y*cos(x*t)))^2)/n
+return(sp)
+}
+
+
+periodogram <- function(x,rows=length(x),plot=TRUE,title=NULL,...)
+# creates and plots periodogram of series x
+{
+# initialization
+if (is.null(title))
+	title <- paste("Periodogram of series",deparse(substitute(x)))
+x <- na.exclude(x)
+n <- length(x)
+IOmega <- NULL
+i <- seq(1:trunc(n/2-1))
+t <- seq(1:n)
+omega <- (2*pi*i)/n
+
+IOmega <- sapply(i,function(x){intensity(omega[x], n=n, y=x)})
+period <- (2*pi)/omega
+period.max <- round(max(period),2)
+period.min <- round(min(period),2)
+
+if (plot)
+	{
+	# plots the periodogram
+	plot(omega, IOmega, xlab="Angular frequency (rad) - [Top axis is period in days]",ylab="I(omega)",bg="white",...)
+	axis(3,at=c(min(omega),0.5,1.0,1.5,2.0,2.5,3.0,max(omega)),        labels=c(period.max,12.57,6.28,4.19,3.14,2.51,2.09,period.min))
+	title(main=title)
+	lines(omega,IOmega,type="h")
+	}
+
+# returns periodogram
+periodogram <- cbind.data.frame(period,omega,IOmega)
+periodogram <- periodogram[order(periodogram$IOmega),]
+
+retval <- periodogram[1:rows,]
+return(retval)
+}
+
+
+envelope <- function(object,type="deviance",size=.95,rep=20,epsilon=1e-3,maxit=1e2,plot=TRUE,verbose=FALSE,...)
+# simulates and plots an envelope of residuals based on A. C. Atkinson book
+{
+if (class(object) == "pgam")
+	{
+	st <- proc.time()
+	if (rep < 20)
+        stop("Number of replications must be greater than 20.")
+	
+	n <- object$n
+	tau <- object$tau
+	dataset <- as.data.frame(eval(parse(text=object$dataset)))
+	fitted <- fitted(object)[(tau+1):n]
+	formula <- as.formula(paste("SIMRESP",object$formula[1],object$formula[3]))
+	resid <- resid(object,type)[(tau+1):n]
+	e <- matrix(NA,(n-tau),rep)
+	
+	attach(dataset)
+	for (i in 1:rep)
+        {
+        if (verbose)
+			cat(paste("\nReplication:",i,"\n"))
+		else
+			cat(paste("[",i,"]",sep=""))
+		SIMRESP <- rpois(n,fitted)
+        runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=object$optim.method,partial.resid=object$partial.resid,numerical.se=FALSE,verbose=verbose)
+        # for now these will be the defaults ---> must be changed!
+		runningresid <- resid(runningmodel,type)[(tau+1):n]
+		e[,i] <- sort(runningresid)
+		}
+
+	e1 <- numeric(n-tau)
+	e2 <- numeric(n-tau)
+
+	for (i in 1:(n-tau))
+        {
+        eo <- sort(e[i,])
+        e1[i] <- eo[round(((1-size)/2)*rep,0)]
+        e2[i] <- eo[round(((1+size)/2)*rep,0)]
+        }
+	residmean <- apply(e,1,mean)
+	band <- range(resid,e1,e2)
+
+	et <- proc.time()
+	if (verbose)
+		cat(paste("\nOverall envelope simulation process took", elapsedtime(st,et)),"(hh:mm:ss)\n")
+	else
+		cat("\n")
+
+	retval <- list(lb=e1,ub=e2,mean=residmean,residuals=resid)
+	class(retval) <- "envelope"
+	}
+else if (class(object) == "envelope")
+	{
+	e1 <- object$lb
+	e2 <- object$ub
+	residmean <- object$mean
+	resid <- object$residuals
+	band <- range(resid,e1,e2)
+	}
+
+# plotting the envelope
+if (plot)
+	{
+	qqnorm(e1,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=1,lwd=1,col="red",bg="white")
+	par(new=TRUE)
+	qqnorm(e2,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=1,lwd=1,col="red",,bg="transparent")
+	par(new=TRUE)
+	qqnorm(residmean,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=2,col="blue",bg="transparent")
+	par(new=TRUE)
+	qqnorm(resid,main="Simulated Envelope of Residuals", ylab="Residual Components",xlab="Standard Normal Quantiles",ylim=band,bg="transparent",...)
+	}
+return(retval)
+}
+
+
+.First.lib <- function(lib, pkg)
+{
+ver <- package.description("pgam")[c("Version")]
+cat(paste("This is pgam library version",ver,"\n"))
+require("modreg",quietly=TRUE,warn.conflicts=FALSE)
+library.dynam("pgam",pkg,lib)
+}
+
+
+.Last.lib <- function(libpath)
+{
+# unloading process 
+library.dynam.unload("pgam",libpath)
+}
+
+# functions end here -----------------------
+

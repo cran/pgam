@@ -1,0 +1,34 @@
+pgam.parser				Read the model formula and split it into two new ones:
+						parametric and nonparametric partitions of predictor.
+pgam.filter				Run appropriate recursions for estimation of priori and 
+						posteriori conditional distribution parameters of the level.
+pgam.likelihood			Likelihood function to be maximized.
+pgam.fit				Estimate one-step ahead expectation of y_t conditional
+						on Y_t-1.
+pgam.psi2par			Put hyperparameters into unconstrained form for optimization.
+pgam.par2psi			Put optimized parameters back into omega and beta form.
+pgam.hes2se				Put hyperparameters hessian matrix in the form of omega and beta
+						standard error.
+pgam					Fit a Poisson-Gamma Additive Model (PGAM).
+residuals.pgam			Method for residuals extraction.
+predict.pgam			Method for k-step ahead forecasting.
+fitted.pgam				Method for fitted values extraction.
+coef.pgam				Method for parametric coefficients extraction. 
+logLik.pgam				Method for loglik value extraction.
+deviance.pgam			Method for deviance extraction.
+AIC.pgam				Method for appproximate AIC estimation.
+summary.pgam			Method for output model information.
+print.summary.pgam		Method for summary printing.
+plot.pgam				Method for level and smooth terms plotting.
+f						Build seasonal factors data matrix.
+g						Extract smoothing information from the formula.
+fnz						Return first non-zero observation index.
+framebuilder			Build a data frame given the formula.
+backfitting				Fit the nonparametric partition of a PGAM moel.
+pgam.smooth				Wrapper for the smoothers functions
+elapsedtime				Compute the elapsed time between start and end time.
+link					Aplly the link function or its inverse.
+lpnorm					Return the Lp-norm. If p=0 then Infinity norm is returned.
+intensity				Spectral decomposition of a time series.
+periodogram				Create and plot the periodogram of a time series.
+envelope				Simulate and plot an envelope of residuals of a PGAM model.

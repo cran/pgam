@@ -1,0 +1,42 @@
+\name{pgam.likelihood}
+\alias{pgam.likelihood}
+\title{Likelihood function to be maximized}
+\description{
+This is the log-likelihood function that is passed to \code{optim} for likelihood maximization.
+}
+\usage{
+pgam.likelihood(par, y, x, offset, fperiod, env = parent.frame())
+}
+\arguments{
+  \item{par}{vector of parameters to be optimized}
+  \item{y}{observed time series which is the response variable of the model}
+  \item{x}{observed explanatory variables for parametric fit}
+  \item{offset}{model offset. Just like in GLM}
+  \item{fperiod}{vector of seasonal factors to be passed to \code{pgam.par2psi}}
+  \item{env}{the caller environment for log-likelihood value to be stored}
+}
+\details{
+Log-likelihood function of hyperparameters \eqn{\omega} and \eqn{\beta} is given by
+\deqn{\log L\left(\omega,\beta\right)=\sum_{t=\tau+1}^{n}{\log \Gamma\left(a_{t|t-1}+y_{t}\right)-\log y_{t}!-\cr
+\log \Gamma\left(a_{t|t-1}\right)+a_{t|t-1}\log b_{t|t-1}-\left(a_{t|t-1}+y_{t}\right)\log \left(1+b_{t|t-1}\right)}}
+where \eqn{a_{t|t-1}} and \eqn{b_{t|t-1}} are estimated as it is shown in \code{\link{pgam.filter}}.
+}
+\value{
+List containing log-likelihood value, optimum linear predictor and the gamma parameters vectors.}
+\references{
+Harvey, A. C., Fernandes, C. (1989) Time series models for count data or qualitative observations. Journal of Business and Economic Statistics, 7(4):407--417
+
+Harvey, A. C. (1990) Forecasting, structural time series models and the Kalman Filter. Cambridge, New York
+
+Campos, E. L., De Leon, A. C. M. P., Fernandes, C. A. C. (2003) Modelo Poisson-Gama para Séries Temporais de Dados de Contagem - Teoria e Aplicações. 10a ESTE - Escola de Séries Temporais e Econometria
+
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+}
+\author{Washington Leite Junger \cr \email{wjunger@ims.uerj.br}
+}
+\note{This function is not intended to be called directly.
+}
+\seealso{\code{\link{pgam}}, \code{\link{pgam.filter}}, \code{\link{pgam.fit}}}
+	\keyword{ts}
+	\keyword{smooth}
+	\keyword{regression}
