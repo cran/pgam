@@ -5,8 +5,8 @@
 }
 \usage{
 pgam(formula, dataset, omega = 0.8, beta = 0.1, offset = 1, digits = getOption("digits"),
-maxit = 100, eps = 1e-06, lfn.scale=1, control = list(), optim.method = "L-BFGS-B", partial.resid = "response",
-smoother = "spline", bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
+maxit = 100, eps = 1e-06, lfn.scale=1, control = list(), optim.method = "L-BFGS-B", 
+bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
 }
 \arguments{
   \item{formula}{a model formula. See \code{\link{pgam.parser}} for details}
@@ -20,8 +20,8 @@ smoother = "spline", bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerica
   \item{lfn.scale}{scales the likelihood function and is passed to \code{control} in \code{\link{optim}}. Value must be positive to ensure maximization}
   \item{control}{convergence control of \code{\link{optim}}. See its help for details}
   \item{optim.method}{optimization method passed to \code{\link{optim}}. Different methods can lead to different results, so the user must attempt to the trade off between speed and robustness. For example, \code{BFGS} is faster but sensitive to starting values and \code{L-BFGS-B} is more robust but slower. See its help for details.}
-  \item{partial.resid}{type of partial residual to be used if semiparametric fitting. See \code{\link{residuals.pgam}} for details}
-  \item{smoother}{smoother to be used in backfitting. See \code{\link{pgam.smooth}} for details}
+%  \item{partial.resid}{type of partial residual to be used if semiparametric fitting. See \code{\link{residuals.pgam}} for details}
+%  \item{smoother}{smoother to be used in backfitting. See \code{\link{pgam.smooth}} for details}
   \item{bkf.eps}{convergence control criterion for the backfitting algorithm}
   \item{bkf.maxit}{convergence control iterations for the backfitting algorithm}
   \item{se.estimation}{if \code{numerical} numerical standard error of parameters are returned. If \code{analytical} then analytical extraction of the standard errors is performed. By setting it to \code{none} standard error estimation is avoided}
@@ -52,7 +52,7 @@ library(pgam)
 data(aihrio)
 attach(aihrio)
 form <- ITRESP5~f(WEEK)+HOLIDAYS+rain+PM+g(tmpmax,7)+g(wet,3)
-m <- pgam(form,aihrio,omega=.8,beta=.01,maxit=1e2,eps=1e-4,optim.method="BFGS",partial.resid="response")
+m <- pgam(form,aihrio,omega=.8,beta=.01,maxit=1e2,eps=1e-4,optim.method="BFGS")
 
 summary(m)
 

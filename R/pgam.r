@@ -19,7 +19,7 @@
 # 21/10/2003  fixed some bugs, deviance to control convergence and partial deviance residuals in smoothing algorithm - version 0.1.2
 # 22/10/2003  deviance to control convergence (not good) and deviance partial residuals in smoothing algorithm not working - version 0.1.2
 # 24/10/2003  fixed some bugs, trying partial deviance residuals once more (works fine)
-# 15/12/2003  fixed residuals degree of freedom: resdf <- n-kp-sum(sdf)-fnz
+# 15/12/2003  fixed residuals degree of freedom: resdf <- n-kp-sum(sdf)-fnz-1
 # 17/12/2003  some objects renamed
 # 02/01/2004  backfitting(...) function returns the matrix of partial residuals now - version 0.1.3
 # 03/01/2004  resource consuming envelope plot implemented now, some bugs fixed - version 0.1.4
@@ -32,7 +32,9 @@
 # 21/02/2004  X11() call removed
 # 17/03/2004  some bugs fixed, some docs corrected, no more references to dispersion parameter, se of last seasonal factor, periodogram fixed, ... - version 0.3.3
 # 15/04/2004  some bugs fixed, compliance with R version 1.9.0, default (preferred) optimization method moved to L-BFGS-B, approximate dispersion parameter back, light docs on envelope, ...
-# 
+# 16/04/2004  removal of partial residuals options, full non-linear predictor, deals with NA's now, ... - version 0.4.0 beta
+# 28/08/2004  minor bugs corrected - version 0.4.0
+#
 #
 # To do list:
 # -----------
@@ -170,7 +172,7 @@ psi <- pgam.par2psi(par,fperiod)
 if (!is.null(psi$beta))
 	eta <- x%*%psi$beta+offset  # parametric piece of predictor
 else
-	eta <- double(n)
+	eta <- offset
 
 filtered <- pgam.filter(psi$w,y,eta)
 att1 <- filtered$att1
@@ -218,10 +220,10 @@ oo <- .C("pgam_predict",
 # partial residuals
 if (partial.resid == "response")
    	presid <- (log(ynz)-log(oo$yhat))[(fnz+1):n]
-else if (partial.resid == "deviance")
-   	presid <- log(sign(y-oo$yhat)*sqrt(oo$deviance))[(fnz+1):n]
-else if (partial.resid == "pearson")
-	presid <- log((y-oo$yhat)/oo$vyhat)[(fnz+1):n]
+#else if (partial.resid == "deviance")
+#   	presid <- log(sign(y-oo$yhat)*sqrt(oo$deviance))[(fnz+1):n]
+#else if (partial.resid == "pearson")
+#	presid <- log((y-oo$yhat)/oo$vyhat)[(fnz+1):n]
 
 return(list(yhat=oo$yhat,resid=presid))
 }
@@ -301,18 +303,21 @@ se.w <- sqrt(alpha*(exp(alpha)/(1+exp(alpha))^2)^2)  # correcting sigma^2_{omega
 beta <- NULL
 se.beta <- NULL
 
-if (length(hes) > 1)
+if (length(diag(sigma)) > 1)
 	{
 	p <- length(diag(sigma))
 	
 	sigmabeta <- sigma[2:p,2:p]
-	varbeta <- diag(sigmabeta)
-
-	fp <- length(fperiod)
-	bk <- 1
-
-    if (!is.null(fperiod))
+	if (p == 2)
+		varbeta <- sigmabeta
+	else
+		varbeta <- diag(sigmabeta)
+	
+	if (!is.null(fperiod))
     	{
+		fp <- length(fperiod)
+		bk <- 1
+   
 		for (k in 1:fp)
     		{
         	varbetak <- varbeta[bk:(bk+fperiod[k]-2)]  # get pieces of beta from par
@@ -325,18 +330,18 @@ if (length(hes) > 1)
 		    beta <- c(beta,varbeta[bk:length(varbeta)])
 		}
 	else
+		{
     	beta <- varbeta
-	
+		}
 	se.beta <- sqrt(beta)  # extracts standard error
     }
-	
 	
 retval <- list(w=se.w,beta=se.beta)
 return(retval)
 }
 
 
-pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,lfn.scale=1,control=list(),optim.method="L-BFGS-B",partial.resid="response",smoother="spline",bkf.eps=1e-3,bkf.maxit=1e2,se.estimation="numerical",verbose=TRUE)
+pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,lfn.scale=1,control=list(),optim.method="L-BFGS-B",bkf.eps=1e-3,bkf.maxit=1e2,se.estimation="numerical",verbose=TRUE)
 # estimates Poisson-Gamma Additive Models
 {
 st <- proc.time()
@@ -348,6 +353,10 @@ if (is.null(formula))
 if (is.null(dataset))
 	stop("Model dataset is not specified.")
 
+# some fixed default options
+partial.resid <- "response"
+smoother <- "spline"
+	
 if (!verbose)
 	{
 	control$trace <- 0
@@ -361,20 +370,7 @@ parsed <- pgam.parser(formula)  # parse the formula and get components
 response <- framebuilder(parsed$response,dataset)$frame
 yname <- names(response)
 y <- response[[1]]
-n <- length(y)  # get number of obs
-if (sum((y-as.integer(y))>0))
-	{
-    y <- as.integer(y) # non-integer values are truncated
-    cat("Note: Some values must have been truncated in order to ensure compliance with Poisson specification.\n")
-    }
-else
-    y <- as.integer(y) # to avoid type conflict with integer functions
-	
-if (sum(y < 0) > 0)	# checking for negative values. if detected, program halts
-	stop("Negative observations detected. The series does not comply with Poisson specification.")
-fnz <- fnz(y)
-undef <- rep(0,fnz)
-
+n.obs <- length(y)
 etap <- NULL
 px <- NULL
 kx <- 0
@@ -400,8 +396,8 @@ if (parsed$sterms)
     sform <- parsed$sformula
 	sx <- framebuilder(sform,dataset)$frame
     snames <- names(sx)
-    sx <- as.matrix(sx[(fnz+1):n,])
-    sdf <- parsed$sdf
+    sx <- as.matrix(sx)
+	sdf <- parsed$sdf
     sfx <- parsed$sfx
 	ks <- dim(sx)[2] # number of non-parametric explanatory variables
 	}
@@ -427,22 +423,50 @@ if (!is.null(parsed$oterm))
     offset <- as.matrix(parsed$offset*ofactor)
 	}
 else
-	offset <- double(n)
+	offset <- double(length(y))
 
 if (parsed$drift)
 	{
     # to be worked out
     }
-
 px <- cbind(fx,px)
 kp <- kx+kf # number of explanatory variables
+
+#print(dim(sx));cat("\n");print(dim(px));cat("\n")
+
+# getting rid of NA's
+tempDataset <- cbind(y,offset,px,sx)
+tempDataset <- na.omit(tempDataset)
+#print(dim(tempDataset));cat("\n")
+y <- as.matrix(tempDataset[,1])
+n <- length(y)  # get number of valid obs
+fnz <- fnz(y)
+offset <- as.matrix(tempDataset[,2])
+if (!is.null(px))
+	px <- as.matrix(tempDataset[,3:(kp+2)])
+if (!is.null(sx))
+	sx <- as.matrix(tempDataset[(fnz+1):n,(kp+3):(kp+ks+2)])
+#print(dim(sx));cat("\n");print(dim(px));cat("\n")
+
+undef <- rep(0,fnz)
+
+if (sum((y-as.integer(y))>0))
+	{
+    y <- as.integer(y) # non-integer values are truncated
+    cat("Note: Some values must have been truncated in order to ensure compliance with Poisson specification.\n")
+    }
+else
+    y <- as.integer(y) # to avoid type conflict with integer functions
+	
+if (sum(y < 0) > 0)	# checking for negative values. if detected, program halts
+	stop("Negative observations detected. The series does not comply with Poisson specification.")
 
 if (length(beta) == 1)
 	beta <- rep(beta,kp) # expansion of initial value of beta vector (assuming all the same)
 if (kp == 0)
 	beta <- NULL
-if (is.null(px) && !is.null(sx))
-   	stop("This application still not fit full non-linear predictor models.")
+#if (is.null(px) && !is.null(sx))
+#   	stop("This application still not fit full non-linear predictor models.")
 
 assign("loglik",NULL,env=pgam.env)
 
@@ -466,7 +490,10 @@ if (!is.null(sx))
      	{
         # getting useful information
 		psi <- pgam.par2psi(optimized$par,fperiod)
-        etap <- px%*%psi$beta  # parametric piece of predictor
+        if (!is.null(beta))
+			etap <- px%*%psi$beta  # parametric piece of predictor
+		else
+			etap <- double(n)
 		presid <- pgam.fit(psi$w,y,etap+offset,partial.resid)$resid
 		loglik1 <- (-1)*optimized$value
         # backfitting smoothing
@@ -511,7 +538,10 @@ optimized <- optim(optimized$par,pgam.likelihood,y=y,x=px,offset=newoffset,fperi
 psi <- pgam.par2psi(optimized$par,fperiod)
 if (!is.null(sx))
 	{
-    etap <- px%*%psi$beta  # parametric piece of predictor
+    if (!is.null(beta))
+		etap <- px%*%psi$beta  # parametric piece of predictor
+	else
+		etap <- double(n)
     presid <- pgam.fit(psi$w,y,etap+offset,partial.resid)$resid
     # backfitting smoothing
     bkf <- backfitting(presid,sx,sdf,sfx,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=TRUE)
@@ -570,7 +600,7 @@ et <- proc.time()
 if (verbose)
 	cat(paste("\nEstimation process took", elapsedtime(st,et)),"(hh:mm:ss)\n")
 
-retval <- list(call=called,formula=formula,dataset=dataset,omega=omega,se.omega=se.omega,beta=beta,se.beta=se.beta,att1=att1,btt1=btt1,loglik=loglik.value,convergence=convergence,optim.method=optim.method,y=y,px=px,sx=sx,offset=offset,etap=etap,etas=etas,partial.resid=partial.resid,bkf=bkf,alg.k=k,alg.norm=norm,edf=edf,resdf=resdf,n=n,tau=fnz)
+retval <- list(call=called,formula=formula,dataset=dataset,omega=omega,se.omega=se.omega,beta=beta,se.beta=se.beta,att1=att1,btt1=btt1,loglik=loglik.value,convergence=convergence,optim.method=optim.method,y=y,px=px,sx=sx,offset=offset,etap=etap,etas=etas,partial.resid=partial.resid,bkf=bkf,alg.k=k,alg.norm=norm,edf=edf,resdf=resdf,n.obs=n.obs,n=n,tau=fnz)
 class(retval) <- "pgam"
 return(retval)
 }
@@ -589,7 +619,7 @@ d <- predicted$deviance
 h <- predicted$hat
 att1 <- object$att1
 btt1 <- object$btt1
-# phi <- predicted$scale
+phi <- predicted$scale
 
 raw <- y-mu  # getting raw residuals
 
@@ -601,11 +631,11 @@ else if (type == "deviance")
 	resid <- sign(raw)*sqrt(d)
 else if (type == "std_deviance")
 	resid <- sign(raw)*sqrt(d/(1-h))
-#else if (type == "std_scl_deviance")
-#	resid <- sign(raw)*sqrt(d/(phi*(1-h)))
+else if (type == "std_scl_deviance")
+	resid <- sign(raw)*sqrt(d/(phi*(1-h)))
 #else if (type == "adj_deviance")
 #	{
-#    skew <- (2-att1)/sqrt(btt1*(1-att1))  # skewness coeficient of negative binomial distribution
+#    skew <- (1/6)*(2-att1)/sqrt(btt1*(1-att1))  # skewness coeficient of negative binomial distribution
 #	resid <- sign(raw)*sqrt(d)*skew
 #   }
 else
@@ -779,10 +809,10 @@ predicted <- predict(object,...)
 nprime <- object$n-object$tau
 deviance <- sum(predicted$deviance,na.rm=TRUE)
 edf <- object$edf
-#phi <- predicted$scale
+phi <- predicted$scale
 
-# retval <- (1/nprime)*(deviance+k*edf*phi)
-retval <- (1/nprime)*(deviance+k*edf)
+retval <- (1/nprime)*(deviance+k*edf*phi)
+# retval <- (1/nprime)*(deviance+k*edf)
 return(retval)
 }
 
@@ -797,6 +827,7 @@ call <- object$call
 formula <- object$formula
 convergence <- object$convergence
 optim.method <- object$optim.method
+n.obs <- object$n.obs
 n <- object$n
 tau <- object$tau
 alg.k <- object$alg.k
@@ -830,7 +861,7 @@ else
 	pchi.smo <- NULL
 	}
 
-retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,scale=scale,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
+retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n.obs=n.obs,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,scale=scale,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
 class(retval) <- "summary.pgam"
 return(retval)
 }
@@ -865,7 +896,7 @@ else
 cat("\nResidual deviance is ",round(x$deviance,digits)," on ",x$res.edf," estimated degrees of freedom.\n",sep="")
 cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
 # cat("\nGeneralized Pearson statistics is ",round(x$pearson,digits),".\n",sep="")
-cat("\nDiffuse initialization wasted the ",x$tau," first observation(s).\n",sep="")
+cat("\nDiffuse initialization wasted the ",x$tau," first observation(s). Besides, ",x$n.obs-x$n," observation(s) was(were) lost due to missing data.\n",sep="")
 }
 
 
@@ -966,7 +997,7 @@ framebuilder <- function(formula,dataset)
 # builds a data frame from the dataset given the formula
 {
 if (!is.null(formula))
-	frame <- model.frame(formula,dataset)
+	frame <- model.frame(formula,dataset,na.action=na.pass)
 else
 	frame <- NULL
 retval <- list(frame=frame)
@@ -1190,8 +1221,8 @@ if (class(object) == "pgam")
 			cat(paste("\nReplication:",i,"\n"))
 		else
 			cat(paste("[",i,"]",sep=""))
-		SIMRESP <- rpois(n,fitted)
-        runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=optim.method,partial.resid=object$partial.resid,se.estimation="none",verbose=verbose,lfn.scale=1e3)
+		SIMRESP <- rpois(object$n.obs,fitted)
+        runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=optim.method,se.estimation="none",verbose=verbose,lfn.scale=1e3)
         # for now these will be the defaults ---> must be changed!
 		runningresid <- resid(runningmodel,type)[(tau+1):n]
 		e[,i] <- sort(runningresid,na.last=TRUE,method="shell")
@@ -1200,12 +1231,20 @@ if (class(object) == "pgam")
 	e1 <- numeric(n-tau)
 	e2 <- numeric(n-tau)
 
-	for (i in 1:(n-tau))
-        {
-        eo <- sort(e[i,])
-        e1[i] <- eo[ceiling(((1-size)/2)*rep)]
-        e2[i] <- eo[ceiling(((1+size)/2)*rep)]
-        }
+	if (rep ==19)
+		for (i in 1:(n-tau))
+        	{
+        	eo <- sort(e[i,])
+        	e1[i] <- min(eo)
+        	e2[i] <- max(eo)
+        	}
+	else
+		for (i in 1:(n-tau))
+        	{
+        	eo <- sort(e[i,])
+        	e1[i] <- eo[ceiling(((1-size)/2)*rep)]
+        	e2[i] <- eo[ceiling(((1+size)/2)*rep)]
+        	}
 	residmean <- apply(e,1,mean,na.rm=TRUE)
 	band <- range(resid,e1,e2,na.rm=TRUE)
 
@@ -1240,6 +1279,35 @@ if (plot)
 	}
 if (class(object) == "pgam")
 	return(retval)
+}
+
+
+tbl2tex <- function(tbl,label="tbl:label(must_be_changed!)",caption="Table generated with tbl2tex.",centered=TRUE,alignment="center",digits=getOption("digits"),hline=TRUE,vline=TRUE,file="",topleftcell="   ")
+# outputs a data matrix in LaTeX format
+{
+tbl <- as.matrix(tbl)
+r <- dim(tbl)[[1]]
+c <- dim(tbl)[[2]]
+rnames <- dimnames(tbl)[[1]]
+cnames <- dimnames(tbl)[[2]]
+align <- rep(substr(alignment,1,1),c+1)
+
+# vertical lines
+if (vline)
+	pos <- paste("|",paste(align,sep="",collapse="|"),"|",sep="")
+else
+	pos <- paste(align,collapse=" ")
+
+# headers
+cat("% File generated on R environment by tbl2tex()\n% Creation date: ",date(),"\n% Suggestions to Washington Junger <wjunger@ims.uerj.br>\n",sep="",file=file,append=FALSE)
+cat("\\begin{table}\n",ifelse(centered,"\\centering\n",""),"\\caption{",caption,"}\n\\label{",label,"}\n",sep="",file=file,append=TRUE)
+cat("    \\begin{tabular}{",pos,"} ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
+cat("    ",topleftcell," & ",paste(cnames,sep="",collapse=" & ")," \\\\ ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
+# data
+for(i in 1:r)
+	cat("    ",rnames[i]," & ",paste(round(tbl[i,],digits),sep="",collapse=" & ")," \\\\ ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
+# footer
+cat("    \\end{tabular}\n\\end{table}\n\% End of tbl2tex() generated file.\n",sep="",file=file,append=TRUE)
 }
 
 

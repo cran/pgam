@@ -32,3 +32,4 @@ lpnorm					Return the Lp-norm. If p=0 then Infinity norm is returned.
 intensity				Spectral decomposition of a time series.
 periodogram				Create and plot the periodogram of a time series.
 envelope				Simulate and plot an envelope of residuals of a PGAM model.
+tbl2tex					Export a data frame to a fancy LaTeX table environment.
