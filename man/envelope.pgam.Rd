@@ -6,7 +6,7 @@
 }
 \usage{
 \method{envelope}{pgam}(object, type = "deviance", size = 0.95, rep = 19, optim.method=NULL, 
-epsilon = 0.001, maxit = 100, plot = TRUE, verbose = FALSE, ...)
+epsilon = 0.001, maxit = 100, plot = TRUE, title="Simulated Envelope of Residuals", verbose = FALSE, ...)
 }
 \arguments{
   \item{object}{object of class \code{pgam} holding the fitted model}
@@ -17,6 +17,7 @@ epsilon = 0.001, maxit = 100, plot = TRUE, verbose = FALSE, ...)
   \item{epsilon}{convergence control to be passed to \code{\link{pgam}}}
   \item{maxit}{convergence control to be passed to \code{\link{pgam}}}
   \item{plot}{if \code{TRUE} a plot of the envelope is produced}
+  \item{title}{title for the plot}
   \item{verbose}{if \code{TRUE} a sort of information is printed during the running time}
   \item{\dots}{further arguments to \code{\link{plot}} function}
 }

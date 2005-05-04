@@ -15,7 +15,7 @@
 # started in 11/06/2003 (dd/mm/yyyy)
 # last change: (date first)
 # 18/10/2003  up and running (debut) - version 0.1.0
-# 19/10/2003  log(1e-7) changed to log(0.1) when y=0 (very troubling in ZIP) - version 0.1.1
+# 19/10/2003  log(1e-7) changed to log(0.1) when y=0 (very troubling in many zeros series) - version 0.1.1
 # 21/10/2003  fixed some bugs, deviance to control convergence and partial deviance residuals in smoothing algorithm - version 0.1.2
 # 22/10/2003  deviance to control convergence (not good) and deviance partial residuals in smoothing algorithm not working - version 0.1.2
 # 24/10/2003  fixed some bugs, trying partial deviance residuals once more (works fine)
@@ -33,9 +33,10 @@
 # 17/03/2004  some bugs fixed, some docs corrected, no more references to dispersion parameter, se of last seasonal factor, periodogram fixed, ... - version 0.3.3
 # 15/04/2004  some bugs fixed, compliance with R version 1.9.0, default (preferred) optimization method moved to L-BFGS-B, approximate dispersion parameter back, light docs on envelope, ...
 # 16/04/2004  removal of partial residuals options, full non-linear predictor, deals with NA's now, ... - version 0.4.0 beta
-# 28/08/2004  minor bugs corrected - version 0.4.0
+# 28/08/2004  minor bugs fixed - version 0.4.0
 # 13/02/2005  fixed compiler flag, R version >= 1.9.0, broken missing data support removed and minor bugs fixed - version 0.4.1
-# 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce)- v. 0.4.2
+# 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce) - v. 0.4.2
+# 02/04/2005  fixed model estimated degrees of freedom -  v. 0.4.3
 #
 #
 # To do list:
@@ -597,7 +598,7 @@ btt1 <- loglik$btt1
 
 # corrected estimated residuals degrees of freedom (including ^w)
 if (!is.null(bkf))
-	edf <- kp+fnz+sum(bkf$edf)+1
+	edf <- kp+fnz+sum(bkf$edf+1)  # correction suggested by Hastie and Tibshirani (1990)
 else
 	edf <- kp+fnz+1
 resdf <- n-edf
@@ -1209,7 +1210,7 @@ envelope <- function(object,...)
 	UseMethod("envelope")
 	
 
-envelope.pgam <- function(object,type="deviance",size=.95,rep=19,optim.method=NULL,epsilon=1e-3,maxit=1e2,plot=TRUE,verbose=FALSE,...)
+envelope.pgam <- function(object,type="deviance",size=.95,rep=19,optim.method=NULL,epsilon=1e-3,maxit=1e2,plot=TRUE,title="Simulated Envelope of Residuals",verbose=FALSE,...)
 # simulates and plots an envelope of residuals based on A. C. Atkinson book
 {
 if (class(object) == "pgam")
@@ -1289,7 +1290,7 @@ if (plot)
 	par(new=TRUE)
 	qqnorm(residmean,axes=FALSE,main="",xlab="",ylab="",type="l",ylim=band,lty=2,col="blue",bg="transparent")
 	par(new=TRUE)
-	qqnorm(resid,main="Simulated Envelope of Residuals", ylab="Residual Components",xlab="Standard Normal Quantiles",ylim=band,bg="transparent",...)
+	qqnorm(resid,main=title, ylab="Residual Components",xlab="Standard Normal Quantiles",ylim=band,bg="transparent",...)
 	}
 if (class(object) == "pgam")
 	return(retval)
