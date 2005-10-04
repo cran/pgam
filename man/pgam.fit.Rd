@@ -13,7 +13,8 @@ pgam.fit(w, y, eta, partial.resid)
   \item{eta}{semiparametric predictor}
   \item{partial.resid}{type of partial residuals.}
 }
-\details{Partial residuals for semiparametric estimation is extracted. Those are regarded to the parametric partition fit of the model. Available types are \code{raw}, \code{pearson} and \code{deviance}. The type \code{raw} is prefered. Properties of other form of residuals not fully tested. Must be careful on choosing it.
+\details{
+Partial residuals for semiparametric estimation is extracted. Those are regarded to the parametric partition fit of the model. Available types are \code{raw}, \code{pearson} and \code{deviance}. The type \code{raw} is prefered. Properties of other form of residuals not fully tested. Must be careful on choosing it.
 See details in \code{\link{predict.pgam}} and \code{\link{residuals.pgam}}.
 }
 \value{
@@ -37,6 +38,5 @@ Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized L
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}, \code{\link{residuals.pgam}}, \code{\link{predict.pgam}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}
+ 

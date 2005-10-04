@@ -59,9 +59,12 @@ for (t=0;t<n;t++)
 	vyhat[t] = att1[t]*(1.0+btt1[t])/pow(btt1[t],2);
 	/* deviance */
 	if (!(y[t] == 0))
+		
 		deviance[t] = 2*(att1[t]*log(att1[t]/(y[t]*btt1[t]))-(att1[t]+y[t])*log((y[t]+att1[t])/((1.0+btt1[t])*y[t])));
+		
 	else
-		deviance[t] = 2*(att1[t]*log((1.0+btt1[t])/btt1[t]));
+		
+		deviance[t] = -2*(att1[t]*log((1.0+btt1[t])/btt1[t]));
 	/* pearson */
 	pearson[t] = pow(y[t]*btt1[t]-att1[t],2)/(att1[t]*(1.0+btt1[t]));
 	}

@@ -4,13 +4,12 @@
 \description{Fit the nonparametric part of the model via backfitting algorithm.
 }
 \usage{
-backfitting(y, x, df, fx, smoother = "spline", w = rep(1, length(y)), eps = 0.001, maxit = 100, info = TRUE)
+backfitting(y, x, df, smoother = "spline", w = rep(1, length(y)), eps = 0.001, maxit = 100, info = TRUE)
 }
 \arguments{
   \item{y}{dependent variable for fitting. In semiparametric models, this is the partial residuals of parametric fit}
   \item{x}{matrix of covariates}
-  \item{df}{equivalent degrees of freedom}
-  \item{fx}{if \code{FALSE} the smoothing parameter is chosen by cross-validation}
+  \item{df}{equivalent degrees of freedom. If \code{NULL} the smoothing parameter is selected by cross-validation}
   \item{smoother}{string with the name of the smoother to be used}
   \item{w}{vector with the diagonal elements of the weight matrix. Default is a vector of \eqn{1} with the same length of \eqn{y}}
   \item{eps}{convergence control criterion}
@@ -26,7 +25,7 @@ More details soon enough.
 \references{
 Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized Linear Models: a roughness penalty approach. Chapman and Hall, London
 
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Param�rico: Uma Abordagem de Penaliza�o por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia El�rica
+Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
 
 Hastie, T. J., Tibshirani, R. J.(1990) Generalized Additive Models. Chapman and Hall, London
 }
@@ -35,6 +34,4 @@ Hastie, T. J., Tibshirani, R. J.(1990) Generalized Additive Models. Chapman and 
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}, \code{\link{predict.pgam}}, \code{\link{bkfsmooth}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

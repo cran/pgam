@@ -4,12 +4,11 @@
 \description{Collect information to smooth the term in its argument. Used in the model formula.
 }
 \usage{
-g(var, df, fx = TRUE)
+g(var, df = NULL)
 }
 \arguments{
   \item{var}{variable to be smoothed}
-  \item{df}{equivalent degrees of freedom to be passed to the smoother}
-  \item{fx}{if \code{FALSE}, \code{df} is ignored and smoothing parameter is chosen by cross-validation}
+  \item{df}{equivalent degrees of freedom to be passed to the smoother. If \code{NULL}, smoothing parameter is selected by cross-validation}
 }
 \details{This function only sets things up for model fitting. The smooth terms are actually fitted by \code{\link{bkfsmooth}}.
 }

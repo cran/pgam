@@ -16,6 +16,4 @@ lpnorm(seq1, seq2 = 0, p = 0)
 \author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

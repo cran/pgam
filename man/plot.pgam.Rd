@@ -4,13 +4,14 @@
 \description{Plot of the local level and, when semiparametric model is fitted, the estimated smooth terms.
 }
 \usage{
-\method{plot}{pgam}(x, rug = TRUE, se = TRUE, at.once = FALSE, ...)
+\method{plot}{pgam}(x, rug = TRUE, se = TRUE, at.once = FALSE, scaled = FALSE, ...)
 }
 \arguments{
   \item{x}{object of class \code{pgam} holding the fitted model}
   \item{rug}{if \code{TRUE} a density rug is drawn on the bottom of the graphic}
   \item{se}{if \code{TRUE} error band is drawn around the fitted values}
   \item{at.once}{if \code{TRUE} each plot goes to a separate window, else the user is prompted to continue}
+  \item{scaled}{if \code{TRUE} the same scale will be used for plots of smoothed functions}
   \item{\dots}{further arguments passed to method}
 }
 \details{Error band of smooth terms is approximated.

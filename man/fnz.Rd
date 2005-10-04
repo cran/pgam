@@ -16,6 +16,4 @@ fnz(y)
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

@@ -5,8 +5,9 @@
 }
 \usage{
 pgam(formula, dataset, omega = 0.8, beta = 0.1, offset = 1, digits = getOption("digits"),
-maxit = 100, eps = 1e-06, lfn.scale=1, control = list(), optim.method = "L-BFGS-B", 
-bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
+na.action="na.exclude", maxit = 100, eps = 1e-06, lfn.scale=1, control = list(), 
+optim.method = "L-BFGS-B", bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", 
+verbose = TRUE)
 }
 \arguments{
   \item{formula}{a model formula. See \code{\link{formparser}} for details}
@@ -15,6 +16,7 @@ bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
   \item{beta}{vector of initial values for covariates coefficients. If a sigle value is supplied it is replicated to fill in the whole vector}
   \item{offset}{default is \eqn{1}. Other value can be supplied here}
   \item{digits}{number of decimal places for printing information out}
+  \item{na.action}{action to be taken if missing values are found. Default is \code{"na.exclude"} and residuals and predictions are padded to fit the length of the data. If \code{"na.fail"} then the process will stop if missing values are found. If \code{"na.omit"} the process will continue without padding though. If \code{"na.pass"} the process will stop due to errors}
   \item{maxit}{convergence control iterations}
   \item{eps}{convergence control criterion}
   \item{lfn.scale}{scales the likelihood function and is passed to \code{control} in \code{\link{optim}}. Value must be positive to ensure maximization}
@@ -27,7 +29,20 @@ bkf.eps = 0.001, bkf.maxit = 100, se.estimation = "numerical", verbose = TRUE)
   \item{se.estimation}{if \code{numerical} numerical standard error of parameters are returned. If \code{analytical} then analytical extraction of the standard errors is performed. By setting it to \code{none} standard error estimation is avoided}
   \item{verbose}{if \code{TRUE} information during estimation process is printed out}
 }
-\details{There are a lot of details to be written. It will be very soon.
+\details{
+The formula is parsed by \code{\link{formparser}} in order to extract all the information necessary for model fit. Split the model into two parts regarding the parametric nature of the model.
+A model can be specified as following:
+\deqn{Y~f\left(sf_{r}\right)+V1+V2+V3+g\left(V4,df_{4}\right)+g\left(V5,df_{5}\right)}
+where \eqn{sf_{r}} is a seasonal factor with period \eqn{r} and \eqn{df_{i}} is the degree of freedom of the smoother of the \emph{i}-th covariate. Actually, two new formulae will be created:
+\deqn{~sf_{1}+\dots+sf_{r}+V1+V2+V3}
+and
+\deqn{~V4+V5}
+These two formulae will be used to build the necessary datasets for model estimation. \emph{Dummy} variables reproducing the seasonal factors will be created also.
+
+Models without explanatory variables must be specified as in the following formula
+\deqn{Y~NULL}
+
+There are a lot of details to be written. It will be very soon.
 
 Specific information can be obtained on functions help.
 
@@ -60,3 +75,4 @@ summary(m)
 	\keyword{ts}
 	\keyword{smooth}
 	\keyword{regression}
+ 

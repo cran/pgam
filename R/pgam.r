@@ -37,6 +37,7 @@
 # 13/02/2005  fixed compiler flag, R version >= 1.9.0, broken missing data support removed and minor bugs fixed - version 0.4.1
 # 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce) - v. 0.4.2
 # 02/04/2005  fixed model estimated degrees of freedom -  v. 0.4.3
+# 12/09/2005  now dealing with missing values, computation of null.deviance, some fixes, estimated degrees of freedom returned, help improvement, approximate significance test of smoothing terms - v. 0.4.4
 #
 #
 # To do list:
@@ -44,15 +45,24 @@
 # * implement the analytical method to estimate information matrix
 # * correct estimation of spectrum. done! but it needs some improvement!!!
 # * extend to use multiples seasonal factors
+# * compute gain for smoothed terms
+# * implement an na.replace method
+# * se for smooth terms is still missing
+# * allow extraction of terms via predict.pgam
+# * allow local regression smoothing
 #
 #
 # functions begin here -----------------------
 
-formparser <- function(formula,parent.level=1)
+formparser <- function(formula,env=parent.frame())
 # reads the model formula and splits it in two new formulae: one of parametric
 # terms and another for smoothed terms. 
 {
-formterms <- terms.formula(formula,specials=c("g","f"))	# s'ed terms is supposed to be smoothed (g) and factorized (f)
+.pgam.dataset <- get(".pgam.dataset",env=env)
+attach(.pgam.dataset)	# necessary because of f()
+
+formula <- as.formula(formula)
+formterms <- terms.formula(formula,specials=c("g","f"))	# s'ed terms is supposed to be smoothed (g) and factorised (f)
 modterms <- attr(formterms,"term.labels") # assigns labels of model terms
 nterms <- length(modterms)	# number of terms in model
 fformula <- NULL
@@ -61,7 +71,6 @@ sformula <- NULL  # smoothing formula
 oterm <- NULL  # offset term
 offset <- NULL
 sdf <- NULL  # smoothing df vector
-sfx <- NULL  # smoothing method fixed vector
 findex <- NULL
 pindex <- NULL
 sindex <- NULL
@@ -69,6 +78,7 @@ oindex <- NULL
 fnames <- NULL
 fdata <- NULL
 fperiod <- NULL
+factorvar <- NULL
 
 response <- attr(formterms,"response") 
 if (!(response == 0))
@@ -82,7 +92,7 @@ else
 	r <- 0
 	}
 if (!is.null(attr(formterms,"specials")$f))
-	findex <- attr(formterms,"specials")$f	# indeces of terms to be factorized in modterms array
+	findex <- attr(formterms,"specials")$f	# indeces of terms to be factorised in modterms array
 if (!is.null(attr(formterms,"specials")$g))
 	sindex <- attr(formterms,"specials")$g	# indeces of terms to be smoothed in modterms array
 if (!is.null(attr(formterms,"offset")))
@@ -93,7 +103,7 @@ if (nterms)
 		if (!(k %in% sindex) && !(k %in% oindex) && !(k %in% findex))
     		pindex <- c(pindex,k)  # gets parametric terms indeces
 
-fterms <- length(findex)	# number of terms in factorized formula
+fterms <- length(findex)	# number of terms in factorised formula
 pterms <- length(pindex)	# number of terms in parametric formula
 sterms <- length(sindex)	# number of terms in smooth formula
 
@@ -102,11 +112,23 @@ if (fterms)
     for (k in 1:fterms)  # seasonal factors formula - one occurrence only !!!! must change!!!
     	{
     	fed <- eval(parse(text=as.character(attr(formterms,"variables")[findex[k]+1]))) # f extraction
-        for (d in 1:(fed$fperiod-1))
-        	fformula <- paste(fformula,fed$factornames[d],sep=ifelse(is.null(fformula),"~","+"))
-    	fnames <- c(fnames,fed$factornames)
-    	fdata <- c(fdata,fed$factordata)
-        fperiod <- c(fperiod,fed$fperiod)
+  		factorvar <- as.matrix(eval(parse(text=fed$factor)))
+		colnames(factorvar) <- fed$factor
+		n <- length(factorvar)
+		period <- max(factorvar)
+		factordata <- as.data.frame(matrix(NA,n,period))
+		factornames <- NULL
+		for (k in 1:period)
+			{
+ 		   	factordata[k] <- 1*(factorvar == k)
+ 	 		factornames <- c(factornames,paste(fed$factor,k,sep="."))
+  		  	}
+		colnames(factordata) <- factornames
+		for (d in 1:(period-1))
+        	fformula <- paste(fformula,factornames[d],sep=ifelse(is.null(fformula),"~","+"))
+    	fnames <- c(fnames,factornames)
+    	fdata <- factordata  #c(fdata,factordata)
+        fperiod <- c(fperiod,period)
 		}
 	fformula <- as.formula(fformula)
     fdata <- as.matrix(as.data.frame(fdata))
@@ -126,14 +148,15 @@ if (sterms)
     	sed <- eval(parse(text=as.character(attr(formterms,"variables")[sindex[k]+1]))) # g extraction
 		sformula <- paste(sformula,sed$var,sep=ifelse(is.null(sformula),"~","+"))
     	sdf <- c(sdf,sed$df)
-    	sfx <- c(sfx,sed$fx)
 		}
 	sformula <- as.formula(sformula)
     }
 
 if (!is.null(oindex))  # dealing with the offset term
 	{
-	oterm <- as.character(attr(formterms,"variables")[oindex+1])
+	oterm <- as.character(attr(formterms,"variables")[[oindex+1]])[2]
+	# oterm <- names(attr(formterms,"factors")[attr(formterms,"offset")]) 
+	# oterm <- substr(oterm <- substr(oterm,8,nchar(oterm)),1,nchar(oterm)-1)
 	offset<- eval(parse(text=oterm))
 	}
 	
@@ -142,7 +165,9 @@ if (attr(formterms,"intercept") == 0)
 else
 	intercept <- TRUE
 
-retval <- list(response=response,pformula=pformula,pterms=pterms,sformula=sformula,sdf=sdf,sfx=sfx,sterms=sterms,fterms=fterms,fformula=fformula,fnames=fnames,fdata=fdata,fperiod=fperiod,oterm=oterm,offset=offset,intercept=intercept,fullformula=formula)
+detach(.pgam.dataset)  # i don't like it!!!
+rm(.pgam.dataset) 
+retval <- list(response=response,pformula=pformula,pterms=pterms,sformula=sformula,sdf=sdf,sterms=sterms,fterms=fterms,fformula=fformula,factor=factorvar,fnames=fnames,fdata=fdata,fperiod=fperiod,oterm=oterm,offset=offset,intercept=intercept,fullformula=formula)
 class(retval) <- "split.formula"
 return(retval)
 }
@@ -348,12 +373,13 @@ return(retval)
 }
 
 
-pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("digits"),maxit=1e2,eps=1e-6,lfn.scale=1,control=list(),optim.method="L-BFGS-B",bkf.eps=1e-3,bkf.maxit=1e2,se.estimation="numerical",verbose=TRUE)
+pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("digits"),na.action="na.exclude",maxit=1e2,eps=1e-6,lfn.scale=1,control=list(),optim.method="L-BFGS-B",bkf.eps=1e-3,bkf.maxit=1e2,se.estimation="numerical",verbose=TRUE)
 # estimates Poisson-Gamma Additive Models
 {
 st <- proc.time()
 called <- match.call()
 pgam.env <- new.env(FALSE,NULL)  # new environment defined for pgam
+assign(".pgam.dataset",dataset,env=pgam.env)	# it is necessary because of f(factor)
 
 if (is.null(formula))
 	stop("Model formula is not specified.")
@@ -371,21 +397,21 @@ if (!verbose)
 	}
 control$fnscale <- lfn.scale*(-1)
 
-parsed <- formparser(formula)  # parse the formula and get components
-
+parsed <- formparser(formula,env=pgam.env)  # parse the formula and get components
 # building datasets and setting the model structure (no explanatory variables, seasonal factors, linear, additive, offset, drift)
-response <- framebuilder(parsed$response,dataset)$frame
-yname <- names(response)
-y <- response[[1]]
-n.obs <- length(y)
+y <- framebuilder(parsed$response,dataset)
+yname <- names(y)
+y <- as.matrix(y)
+n.obs <- dim(y)[1]
 etap <- NULL
 px <- NULL
 kx <- 0
 pnames <- NULL
+pform <- NULL
 if (parsed$pterms)
 	{
     pform <- parsed$pformula
-	px <- framebuilder(pform,dataset)$frame
+	px <- framebuilder(pform,dataset)
     pnames <- names(px)
     px <- as.matrix(px)
     kx <- dim(px)[2]  # number of non-seasonal factor explanatory variables
@@ -395,18 +421,21 @@ etas <- NULL
 bkf <- NULL
 sx <- NULL
 sdf <- NULL
-sfx <- NULL
 ks <- 0
 snames <- NULL
+sform <- NULL
+sduplicated <- NULL
+var.smox <- NULL
 if (parsed$sterms)
 	{
     sform <- parsed$sformula
-	sx <- framebuilder(sform,dataset)$frame
+	sx <- framebuilder(sform,dataset)
     snames <- names(sx)
     sx <- as.matrix(sx)
 	sdf <- parsed$sdf
-    sfx <- parsed$sfx
 	ks <- dim(sx)[2] # number of non-parametric explanatory variables
+	# getting duplicated values positions
+	sduplicated <- apply(sx,2,sdup <- function(x){duplicated(sort(signif(x,6)))})	
 	}
 
 fx <- NULL
@@ -414,6 +443,7 @@ fp <- 0
 kf <- 0
 fperiod <- NULL
 fnames <- NULL
+fform <- NULL
 if (parsed$fterms)
 	{
     fform <- parsed$fformula
@@ -424,28 +454,34 @@ if (parsed$fterms)
     kf <- sum(fperiod) # total count of seasonal factors
     }
 
-ofactor <- offset
+offcoef <- offset
 if (!is.null(parsed$oterm))
-	{
-    offset <- as.matrix(parsed$offset*ofactor)
+    {
+	offset <- as.matrix(parsed$offset*offcoef)
+	colnames(offset) <- parsed$oterm
 	}
 else
-	offset <- double(length(y))
+	offset <- double(n.obs)
 
 if (parsed$intercept)
 	{
     # to be worked out
     }
+
+terms <- list(response=parsed$response,pform=pform,fform=fform,sform=sform,snames=snames,df=sdf)
+
 px <- cbind(fx,px)
-kp <- kx+kf # number of explanatory variables
+kp <- kf+kx # number of explanatory variables
 
-#print(dim(sx));cat("\n");print(dim(px));cat("\n")
-
+# print(dim(sx));cat("\n");print(dim(px));cat("\n")
 # getting rid of NA's
 tempDataset <- cbind(y,offset,px,sx)
-if (sum(is.na(tempDataset))>0)
-	stop("Missing data is not handled for now. It will be fixed soon.")
-#tempDataset <- na.omit(tempDataset)
+#	stop("Missing data is not handled for now. It will be fixed soon.")
+tempDataset <- eval(parse(text=paste(na.action,"(tempDataset)",sep="")))
+if (!is.null(attr(tempDataset,"na.action")))
+	na.info <- list("na.action"=attr(tempDataset,"na.action"),"na.class"=attr(attr(tempDataset,"na.action"),"class"))
+else
+	na.info <- list("na.action"=attr(tempDataset,"na.action"),"na.class"=substr(na.action,4,nchar(na.action)))
 #print(dim(tempDataset));cat("\n")
 y <- as.matrix(tempDataset[,1])
 n <- length(y)  # get number of valid obs
@@ -462,7 +498,7 @@ undef <- rep(0,fnz)
 if (sum((y-as.integer(y))>0))
 	{
     y <- as.integer(y) # non-integer values are truncated
-    cat("Note: Some values must have been truncated in order to ensure compliance with Poisson specification.\n")
+    warning("Some values must have been truncated in order to ensure compliance with Poisson specification.")
     }
 else
     y <- as.integer(y) # to avoid type conflict with integer functions
@@ -506,7 +542,7 @@ if (!is.null(sx))
 		presid <- pgam.fit(psi$w,y,etap+offset,partial.resid)$resid
 		loglik1 <- (-1)*optimized$value
         # backfitting smoothing
-        bkf <- backfitting(presid,sx,sdf,sfx,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=FALSE)
+        bkf <- backfitting(presid,sx,sdf,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=FALSE)
         etas <- c(undef,bkf$sumfx)
       	newoffset <- offset+etas  # preserves original offset in full eta
         norm <- abs((loglik1-loglik0)/loglik0)
@@ -553,7 +589,7 @@ if (!is.null(sx))
 		etap <- double(n)
     presid <- pgam.fit(psi$w,y,etap+offset,partial.resid)$resid
     # backfitting smoothing
-    bkf <- backfitting(presid,sx,sdf,sfx,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=TRUE)
+    bkf <- backfitting(presid,sx,sdf,smoother=smoother,eps=bkf.eps,maxit=bkf.maxit,info=TRUE)
     # restoring original size of elements in bkf and sx
 	bkf$sumfx <- c(undef,bkf$sumfx)
     bkf$smox <- rbind(matrix(NA,fnz,ks),bkf$smox)
@@ -561,7 +597,22 @@ if (!is.null(sx))
     bkf$pres <- rbind(matrix(NA,fnz,ks),bkf$pres)
 	dimnames(bkf$pres) <- list(NULL,snames)
 	sx <- rbind(matrix(NA,fnz,ks),sx)
-    }
+    # computing variance of smoothing functions
+	sigma.smox <- apply((bkf$pres-bkf$smox)^2,2,sum,na.rm=TRUE)/(n-fnz-bkf$edf)
+	var.smox <- matrix(NA,n,length(sigma.smox))	
+	for (j in 1:length(sigma.smox))
+		{
+		var.smox.short <- sigma.smox[j]*bkf$lev[,j]^2
+		hold <- 0
+		for (i in 1:n)
+			{
+			if (sduplicated[i,j])
+				hold <- hold+1
+			var.smox[i,j] <- var.smox.short[i-hold]
+			}
+		}
+	bkf$var.smox <- var.smox
+	}
 
 # getting useful information
 omega <- psi$w
@@ -598,19 +649,105 @@ btt1 <- loglik$btt1
 
 # corrected estimated residuals degrees of freedom (including ^w)
 if (!is.null(bkf))
-	edf <- kp+fnz+sum(bkf$edf+1)  # correction suggested by Hastie and Tibshirani (1990)
+	edf <- length(beta)+fnz+sum(bkf$edf+1)  # correction suggested by Hastie and Tibshirani (1990)
 else
-	edf <- kp+fnz+1
+	edf <- length(beta)+fnz+1
 resdf <- n-edf
 
-dataset <- deparse(substitute(dataset))
+# including seasonal factors in returned dataset
+if (parsed$fterms)
+	{factor <- parsed$factor; factor[na.info$na.action] <- NA; factor <- na.omit(factor)}
+else
+	factor <- NULL
+dataset <- cbind(tempDataset,factor)  # deparse(substitute(dataset))
 
 et <- proc.time()
 if (verbose)
 	cat(paste("\nEstimation process took", elapsedtime(st,et)),"(hh:mm:ss)\n")
 
-retval <- list(call=called,formula=formula,dataset=dataset,omega=omega,se.omega=se.omega,beta=beta,se.beta=se.beta,att1=att1,btt1=btt1,loglik=loglik.value,convergence=convergence,optim.method=optim.method,y=y,px=px,sx=sx,offset=offset,etap=etap,etas=etas,partial.resid=partial.resid,bkf=bkf,alg.k=k,alg.norm=norm,edf=edf,resdf=resdf,n.obs=n.obs,n=n,tau=fnz)
+retval <- list(call=called,formula=formula,dataset=dataset,omega=omega,se.omega=se.omega,beta=beta,se.beta=se.beta,att1=att1,btt1=btt1,loglik=loglik.value,convergence=convergence,optim.method=optim.method,y=y,px=px,sx=sx,terms=terms,offset=offset,offcoef=offcoef,etap=etap,etas=etas,partial.resid=partial.resid,bkf=bkf,alg.k=k,alg.norm=norm,edf=edf,resdf=resdf,n.obs=n.obs,n=n,tau=fnz,na.info=na.info)
 class(retval) <- "pgam"
+return(retval)
+}
+
+
+backfitting <- function(y,x,df,smoother="spline",w=rep(1,length(y)),eps=1e-3,maxit=1e2,info=TRUE)
+# ajust the non-parametric piece of predictor
+{
+# getting useful information
+n <- dim(x)[1]	# number of observations
+p <- dim(x)[2]	# number of variables to be smoothed
+
+# initialization
+smox <- matrix(0,n,p)  # create storage space for smoothed variables
+pres <- matrix(0,n,p)  # create storage space for partial residuals variables
+lev <- matrix(NA,n,p)  # create storage space for smoother leverage
+edf <- double(p)  # create storage space for edf
+norm <- 1e35	# large value
+smooth <- double(n)
+m <- 0
+
+#backfitting
+while ((norm >= eps) && (m <= maxit))
+	{
+	m <- m+1
+    oldsmooth <- smooth
+    smooth <- double(n)
+    for (j in 1:p)
+		{
+		sumfx <- double(n)
+        for (k in 1:p)
+            smox[,k] <- (k!=j)*bkfsmooth(y,x[,k],df[k],smoother=smoother,w=w)$fitted
+        for (k in 1:p)
+            sumfx <- sumfx+(k!=j)*smox[,k]
+        pres[,j] <- y-sumfx
+        smoothed <- bkfsmooth(pres[,j],x[,j],df[j],smoother=smoother,w=w)
+		smox[,j] <- smoothed$fitted
+		lev[1:length(smoothed$lev),j] <- smoothed$lev
+		edf[j] <- smoothed$df
+        smooth <- smooth+smox[,j]
+        }
+    
+	norm <- lpnorm(smooth,oldsmooth,p=2)/lpnorm(oldsmooth,p=2)
+	}
+
+sumfx <- apply(smox,1,sum)  # sum of fx
+if (!info)
+	{
+	# short returning list - intended to be fast!
+	retval <- list(sumfx=sumfx)
+	}
+else
+	{
+	# complete returning list - slower!
+	retval <- list(sumfx=sumfx,smox=smox,pres=pres,lev=lev,edf=edf)
+	}
+class(retval) <- "backfitting"
+return(retval)
+}
+
+
+bkfsmooth <- function(y,x,df,smoother="spline",w=rep(1,length(y)))
+# smooths y against x wiht ds degrees of smoothness
+{
+if (smoother=="spline")
+	{
+	smoothed <- smooth.spline(x=x,y=y,w=w,df=df)
+	fitted <- predict(smoothed,x)$y
+	lev <- smoothed$lev
+	df <- smoothed$df
+	}
+#else if (smoother=="loess")
+#	{
+#	tempds <- as.data.frame(cbind(y,x))	# temporary dataset
+#	names(tempds) <- c("y","x")
+#	fitted <- loess(as.formula("y~x"),tempds,weights=w,span=1/df)$fitted
+#   retval <- list(fitted=fitted)
+#	}
+else
+	stop(paste("Smoother",smoother,"not implemented yet."))
+
+retval <- list(fitted=fitted,lev=lev,df=df)    
 return(retval)
 }
 
@@ -619,15 +756,16 @@ residuals.pgam <- function(object,type="deviance",...)
 # method for residuals extraction of a pgam model object
 {
 predicted <- predict(object,...)
+na.action <- object$na.info$na.action
 
 # adopting GLM notation for residuals extraction
-y <- object$y
+y <- napredict(na.action,object$y)
 mu <- predicted$yhat
 v.mu <- predicted$vyhat
 d <- predicted$deviance
 h <- predicted$hat
-att1 <- object$att1
-btt1 <- object$btt1
+att1 <- napredict(na.action,object$att1)
+btt1 <- napredict(na.action,object$btt1)
 phi <- predicted$scale
 
 raw <- y-mu  # getting raw residuals
@@ -650,7 +788,7 @@ else if (type == "std_scl_deviance")
 else
 	stop(paste("Residuals of type",type,"is not implmented yet."))
 
-retval <- resid
+retval <- naresid(na.action,resid)  # put NA back
 return(retval)
 }
 
@@ -664,6 +802,7 @@ y <- object$y
 etap <- object$etap
 etas <- object$etas
 w <- object$omega
+na.action <- object$na.info$na.action
 
 # estimates of y_hat_t|t-1
 if (is.null(etap) && !(is.null(etas)))
@@ -741,6 +880,14 @@ oo$yhat[1:fnz] <- NA
 oo$vyhat[1:fnz] <- NA
 oo$deviance[1:fnz] <- NA
 oo$pearson[1:fnz] <- NA
+
+# put NA back
+oo$yhat <- napredict(na.action,oo$yhat)
+oo$vyhat <- napredict(na.action,oo$vyhat)
+oo$deviance <- napredict(na.action,oo$deviance)
+oo$pearson <- napredict(na.action,oo$pearson)
+level <- napredict(na.action,level)
+yhats <- napredict(na.action,yhats)
     
 # forecasting
 if (forecast)
@@ -827,7 +974,7 @@ return(retval)
 }
 
 
-summary.pgam <- function(object,...)
+summary.pgam <- function(object,smo.test=FALSE,...)
 # method for output summary of pgam model object
 {
 predicted <- predict(object,...)
@@ -842,6 +989,15 @@ n <- object$n
 tau <- object$tau
 alg.k <- object$alg.k
 alg.norm <- object$alg.norm
+fterms <- terms.formula(formula,specials=c("g","f"))
+# get null.deviance
+if (!any(attr(fterms,"offset")))
+	nullform <- paste(as.character(formula)[2]," ~ NULL",sep="")
+else
+	nullform <- paste(as.character(formula)[2]," ~ NULL + offset(",as.character(attr(fterms,"variables")[[attr(fterms,"offset")+1]])[2],")",sep="")
+null.model <- pgam(formula=nullform,omega=object$omega,offset=object$offcoef,dataset=as.data.frame(object$dataset),na.action=paste("na.",object$na.info$na.class,sep=""),optim.method=object$optim.method,se.estimation="none",verbose=FALSE)
+null.deviance <- deviance.pgam(null.model)
+
 # goodness-of-fit statistics
 deviance <- sum(predicted$deviance,na.rm=TRUE)
 pearson <- sum(predicted$pearson,na.rm=TRUE)
@@ -854,14 +1010,36 @@ coeff <- c(object$omega,object$beta)
 se.coeff <- c(object$se.omega,object$se.beta)
 t.coeff <- coeff/se.coeff
 pt.coeff <- 2*(1-pt(abs(t.coeff),df=res.edf))
-if (!is.null(object$bkf))
+if (!is.null(object$bkf) && (smo.test))
+	{
+	# nonparametric stuff
+	vars.smo <- dimnames(object$bkf$smox)[[2]]
+	nvars.smo <- length(dimnames(object$bkf$smox)[[2]])
+	edf.smo <- object$bkf$edf
+	test.dev <- double(nvars.smo)
+	# buiding parametric part formula
+	baseform <- paste(as.character(formula)[2]," ~ f(", as.character(attr(fterms,"variables")[[attr(fterms,"specials")$f+1]])[2],") + ", as.character(object$terms$pform)[2],sep="")
+	for (j in 1:nvars.smo)
+		{
+		devform <- paste(baseform," + ",vars.smo[j],sep="")
+		vars.smo.j <- vars.smo; vars.smo.j[j] <- NA; vars.smo.j <- na.omit(vars.smo.j)
+		edf.smo.j <- object$terms$df; edf.smo.j[j] <- NA; edf.smo.j <- na.omit(edf.smo.j)
+		devform <- paste(devform," + g(",vars.smo.j,",",edf.smo.j,")",sep="")
+		dev.mod <- 
+		pgam(formula=devform,omega=object$omega,beta=c(object$beta,mean(object$beta)),offset=object$offcoef,dataset=as.data.frame(object$dataset),na.action=paste("na.",object$na.info$na.class,sep=""),optim.method=object$optim.method,se.estimation="none",verbose=FALSE)
+		test.dev[j] <- deviance.pgam(dev.mod)
+		}
+	# approximate F-tests must be inserted at this point (soon!)
+	chi.smo <- abs(deviance-test.dev)
+	pchi.smo <- 1-pchisq(chi.smo,edf.smo-1)
+	}
+else if (!is.null(object$bkf))
 	{
 	# nonparametric stuff
 	vars.smo <- dimnames(object$bkf$smox)[[2]]
 	edf.smo <- object$bkf$edf
-	# approximate F-tests must be inserted at this point (soon!)
-	chi.smo <- as.double(rep(NA,length(vars.smo)))
-	pchi.smo <- as.double(rep(NA,length(vars.smo)))
+	chi.smo <- NULL
+	pchi.smo <- NULL
 	}
 else
 	{
@@ -871,7 +1049,7 @@ else
 	pchi.smo <- NULL
 	}
 
-retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n.obs=n.obs,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,scale=scale,loglik=loglik,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo)
+retval <- list(call=call,formula=formula,convergence=convergence,optim.method=optim.method,n.obs=n.obs,n=n,tau=tau,alg.k=alg.k,alg.norm=alg.norm,deviance=deviance,pearson=pearson,edf=edf,res.edf=res.edf,scale=scale,loglik=loglik,null.deviance=null.deviance,coeff=coeff,se.coeff=se.coeff,t.coeff=t.coeff,pt.coeff=pt.coeff,vars.smo=vars.smo,edf.smo=edf.smo,chi.smo=chi.smo,pchi.smo=pchi.smo,smo.test=smo.test)
 class(retval) <- "summary.pgam"
 return(retval)
 }
@@ -890,37 +1068,69 @@ cat(rep(" ",width),"     Estimate     std. err.     t ratio      Pr(>|t|)\n",sep
 for (i in 1:length(x$coeff))
     cat(formatC(names(x$coeff)[i],width=width)," ",formatC(x$coeff[i],width=digits+6,digits=digits)," ",formatC(x$se.coeff[i],width=digits+6,digits=digits)," ",formatC(x$t.coeff[i],width=digits+6,digits=digits),"    ",format.pval(x$pt.coeff[i]),"\n",sep="")
 # nonparametric partition of the model
-if (!is.null(x$vars.smo))
+if (!is.null(x$vars.smo) && (x$smo.test))
 	{
-	cat("\nApproximate significance of smooth terms:\n")
+	cat("\nApproximate significance of nonparametric terms:\n")
     width <- max(nchar(x$vars.smo))+2
-    cat(rep(" ",width),"           edf       chi.sq     p-value\n",sep="")
+    cat(rep(" ",width),"       edf            chi.sq         p-value\n",sep="")
     for (i in 1:length(x$vars.smo))
-		cat(formatC(x$vars.smo[i],width=width)," ",formatC(x$edf.smo[i],width=digits+6,digits=digits),"   ",formatC(x$chi.smo[i],width=digits+6,digits=digits),"     ",format.pval(x$pchi.smo[i]),"\n",sep="")
+		cat(formatC(x$vars.smo[i],width=width)," ",formatC(x$edf.smo[i]-1,width=digits+6,digits=digits),"   ",formatC(x$chi.smo[i],width=digits+6,digits=digits),"     ",format.pval(x$pchi.smo[i]),"\n",sep="")
 	}
+else if (!is.null(x$vars.smo))
+	{
+	cat("\nNonparametric terms:\n")
+    width <- max(nchar(x$vars.smo))+2
+    cat(rep(" ",width),"       edf\n",sep="")
+    for (i in 1:length(x$vars.smo))
+		cat(formatC(x$vars.smo[i],width=width)," ",formatC(x$edf.smo[i]-1,width=digits+6,digits=digits),"   "
+		,"\n",sep="")
+	}
+
 cat("\nLog-likelihood value is ",round(x$loglik,digits)," after ",x$optim.method," has ",x$convergence,".\n",sep="")
 if (x$alg.k > 0)
 	cat("\nEstimation process of semiparametric model stopped after ",x$alg.k," iterations at ",round(x$alg.norm,digits),".\n",sep="")
 else
 	cat("\nFull parametric model estimated.\n")
-cat("\nResidual deviance is ",round(x$deviance,digits)," on ",x$res.edf," estimated degrees of freedom.\n",sep="")
+cat("\nNull deviance is ",round(x$null.deviance,digits)," on ",x$n-x$tau-1," degrees of freedom.\n",sep="")
+cat("\nResidual deviance is ",round(x$deviance,digits)," on ",x$res.edf," degrees of freedom.\n",sep="")
 cat("\nApproximate dispersion parameter equals ",round(x$scale,digits)," based on generalized Pearson statistics ",round(x$pearson,digits),".\n",sep="")
 # cat("\nGeneralized Pearson statistics is ",round(x$pearson,digits),".\n",sep="")
-cat("\nDiffuse initialization wasted the ",x$tau," first observation(s). Besides, ",x$n.obs-x$n," observation(s) was(were) lost due to missing data.\n",sep="")
+cat("\nDiffuse initialization wasted the ",x$tau," first observation(s). \nIn addition, ",x$n.obs-x$n," observation(s) lost due to missingness.\n",sep="")
 }
 
 
-plot.pgam <- function(x,rug=TRUE,se=TRUE,at.once=FALSE,...)
+print.pgam <- function(x,digits=getOption("digits"),...)
+{
+cat("Function call:\n")
+print(x$call)
+cat("\nModel formula:\n")
+print(x$formula)
+cat("\nLog-likelihood value is ",round(x$loglik,digits)," after ",x$optim.method," has ",x$convergence,".\n",sep="")
+if (x$alg.k > 0)
+	cat("\nEstimation process of semiparametric model stopped after ",x$alg.k," iterations at ",round(x$alg.norm,digits),".\n",sep="")
+else
+	cat("\nFull parametric model estimated.\n")
+cat("\nDiffuse initialization wasted the ",x$tau," first observation(s). \nIn addition, ",x$n.obs-x$n," observation(s) lost due to missingness.\n",sep="")
+invisible(x)
+}
+
+
+plot.pgam <- function(x,rug=TRUE,se=TRUE,at.once=FALSE,scaled=FALSE,...)
 # method for smooth terms plotting
 {
 predicted <- predict(x,...)
 
 #gathering some useful information
-n <- x$n
+na.action <- x$na.info$na.action
 y.level <- predicted$level
-x.level <- seq(1:n)
-edf <- x$bkf$edf
+x.level <- seq(1:length(y.level))
+if (!is.null(x$bkf$edf))
+	edf <- round(x$bkf$edf,0)  # rounding for better visualisation
+else
+	edf <- x$bkf$edf
+# se <- napredict(na.action,sqrt(x$bkf$var.smox))
 
+#warn.opt <- getOption("warn"); options(warn=-1)
 # plotting level
 plot(x.level,y.level,type="l",xlab="time",ylab="local level",...)
 if (rug)
@@ -931,10 +1141,11 @@ if (!is.null(edf))
 	{
 	s <- length(edf)
 	vars.smo <- dimnames(x$bkf$smox)[[2]]
-	x.g <- x$sx
-	y.g <- x$bkf$smox
-	# setting same scale to smoothed covariates plots - must be updated when plotting se band!!!
-	y.g.lim <- c(min(y.g,na.rm=TRUE),max(y.g,na.rm=TRUE))
+	x.g <- napredict(na.action,x$sx)
+	y.g <- napredict(na.action,x$bkf$smox)
+	
+#	lb.se <- y.g-2*se
+#	ub.se <- y.g+2*se
 	#setting labels
 	y.g.lab <- paste("g(",vars.smo,",",edf,")",sep="")
 	for (i in 1:s)
@@ -949,16 +1160,27 @@ if (!is.null(edf))
 					break
 				}
 		
+		# setting scale to smoothed covariates plots
+#		y.g.lim <- c(min(lb.se[,i],na.rm=TRUE),max(ub.se[,i],na.rm=TRUE))
+		if (scaled)
+			y.g.lim <- c(min(y.g,na.rm=TRUE),max(y.g,na.rm=TRUE))
+		else
+			y.g.lim <- c(min(y.g[,i],na.rm=TRUE),max(y.g[,i],na.rm=TRUE))
 		# must be in appropriate order
 		x <- as.data.frame(x.g[order(x.g[,i]),])
 		y <- as.data.frame(y.g[order(x.g[,i]),])
+#		lb <- as.data.frame(lb.se[order(x.g[,i]),])
+#		ub <- as.data.frame(ub.se[order(x.g[,i]),])
 		
 		plot(x[,i],y[,i],type="l",ylim=y.g.lim,xlab=vars.smo[i],ylab=y.g.lab[i],...)
+#		lines(x[,i],lb[,i],type="l",col="red",ylim=y.g.lim,xlab=vars.smo[i],ylab=y.g.lab[i],...)
+#		lines(x[,i],ub[,i],type="l",col="red",ylim=y.g.lim,xlab=vars.smo[i],ylab=y.g.lab[i],...)
 		rug(x.g[,i])
 		}
 	}
 else
-	cat("\nFull parametric model. Nothing left for plot.pgam() to do.\n")
+	cat("\nFull parametric model. Nothing left to do.\n")
+#options(warn=warn.opt)
 }
 
 
@@ -966,29 +1188,17 @@ f <- function(factorvar)
 # builds factor data matrix
 {
 factorname <- deparse(substitute(factorvar))
-factorvar <- as.matrix(factorvar)
-n <- length(factorvar)
-m <- max(factorvar)
-factordata <- as.data.frame(matrix(NA,n,m))
-datanames <- NULL
-for (k in 1:m)
-	{
-    factordata[k] <- 1*(factorvar == k)
-    datanames <- c(datanames,paste(factorname,k,sep="."))
-    }
-names(factordata) <- datanames
-
-retval <- list(factordata=factordata,factornames=datanames,fperiod=m)
+retval <- list(factor=factorname)
 class(retval) <- "factor.info"
 return(retval)
 }
 
 
-g <- function(var,df,fx=TRUE)
+g <- function(var,df=NULL)
 # extracts spline information from the formula term g(var,df,fx)
 {
 varname <- deparse(substitute(var))
-retval <- list(var=varname,df=df,fx=fx)
+retval <- list(var=varname,df=df)
 class(retval) <- "spline.info"
 return(retval)
 }
@@ -1010,92 +1220,8 @@ if (!is.null(formula))
 	frame <- model.frame(formula,dataset,na.action=na.pass)
 else
 	frame <- NULL
-retval <- list(frame=frame)
+retval <- frame
 class(retval) <- "data.frame"
-return(retval)
-}
-
-
-backfitting <- function(y,x,df,fx,smoother="spline",w=rep(1,length(y)),eps=1e-3,maxit=1e2,info=TRUE)
-# ajust the non-parametric piece of predictor
-{
-# getting useful information
-n <- dim(x)[1]	# number of observations
-p <- dim(x)[2]	# number of variables to be smoothed
-
-# initialization
-smox <- matrix(0,n,p)  # create storage space for smoothed variables
-pres <- matrix(0,n,p)  # create storage space for partial residuals variables
-lev <- matrix(0,n,p)  # create storage space for smoother leverage
-edf <- double(p)  # create storage space for edf
-norm <- 1e35	# large value
-smooth <- double(n)
-m <- 0
-
-#backfitting
-while ((norm >= eps) && (m <= maxit))
-	{
-	m <- m+1
-    oldsmooth <- smooth
-    smooth <- double(n)
-    for (j in 1:p)
-		{
-		sumfx <- double(n)
-        for (k in 1:p)
-            smox[,k] <- (k!=j)*bkfsmooth(y,x[,k],df[k],fx[k],smoother=smoother,w=w)$fitted
-        for (k in 1:p)
-            sumfx <- sumfx+(k!=j)*smox[,k]
-        pres[,j] <- y-sumfx
-        smoothed <- bkfsmooth(pres[,j],x[,j],df[j],fx[j],smoother=smoother,w=w)
-		smox[,j] <- smoothed$fitted
-#		lev[,j] <- smoothed$lev
-#		edf[j] <- smoothed$df
-        smooth <- smooth+smox[,j]
-        }
-    
-	norm <- lpnorm(smooth,oldsmooth,p=2)/lpnorm(oldsmooth,p=2)
-	}
-
-sumfx <- apply(smox,1,sum)  # sum of fx
-if (!info)
-	{
-	# short returning list - intended to be fast!
-	retval <- list(sumfx=sumfx)
-	}
-else
-	{
-	# complete returning list - slower!
-	
-	# in future, when cross-validation be implemented, this will handle the estimated degrees of freedom according to the approximation of Hastie & Tibshirani (1990) given by df_j=trH_j(lambda_j)-1. as df is supposed to be fixed (yet), this will only penalize de degrees of freedom of the spline g_j
-	edf <- df-1
-	retval <- list(sumfx=sumfx,smox=smox,pres=pres,lev=lev,edf=edf)
-	}
-class(retval) <- "backfitting"
-return(retval)
-}
-
-
-bkfsmooth <- function(y,x,df,fx,smoother="spline",w=rep(1,length(y)))
-# smooths y against x wiht ds degrees of smoothness
-{
-if (smoother=="spline")
-	{
-	smoothed <- smooth.spline(x=x,y=y,w=w,df=df)
-	fitted <- predict(smoothed,x)$y
-	lev <- smoothed$lev
-	df <- smoothed$df
-	}
-#else if (smoother=="loess")
-#	{
-#	tempds <- as.data.frame(cbind(y,x))	# temporary dataset
-#	names(tempds) <- c("y","x")
-#	fitted <- loess(as.formula("y~x"),tempds,weights=w,span=1/df)$fitted
-#   retval <- list(fitted=fitted)
-#	}
-else
-	stop(paste("Smoother",smoother,"not implemented yet."))
-
-retval <- list(fitted=fitted,lev=lev,df=df)    
 return(retval)
 }
 

@@ -5,7 +5,7 @@
 \description{A normal plot with simulated envelope of the residual is produced.
 }
 \usage{
-\method{envelope}{pgam}(object, type = "deviance", size = 0.95, rep = 19, optim.method=NULL, 
+\method{envelope}{pgam}(object, type = "deviance", size = 0.95, rep = 19, optim.method = NULL, 
 epsilon = 0.001, maxit = 100, plot = TRUE, title="Simulated Envelope of Residuals", verbose = FALSE, ...)
 }
 \arguments{
@@ -21,7 +21,10 @@ epsilon = 0.001, maxit = 100, plot = TRUE, title="Simulated Envelope of Residual
   \item{verbose}{if \code{TRUE} a sort of information is printed during the running time}
   \item{\dots}{further arguments to \code{\link{plot}} function}
 }
-\details{Sometimes the usual Q-Q plot shows an unsatisfactory pattern of the residuals of a model fitted and we are led to think that the model is badly specificated. The normal plot with simulated envelope indicates that under the distribution of the response variable the model is OK if only a few points fall off the envelope.
+\details{
+Method for the generic function \code{\link{envelope}}.
+
+Sometimes the usual Q-Q plot shows an unsatisfactory pattern of the residuals of a model fitted and we are led to think that the model is badly specificated. The normal plot with simulated envelope indicates that under the distribution of the response variable the model is OK if only a few points fall off the envelope.
 
 If \code{object} is of class \code{pgam} the envelope is estimated and optionally plotted, else if is of class \code{envelope} then it is only plotted.
 }

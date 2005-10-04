@@ -17,6 +17,4 @@ pgam.par2psi(par, fperiod)
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}, \code{\link{formparser}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

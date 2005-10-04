@@ -17,6 +17,4 @@ elapsedtime(st, et)
 \author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
 \seealso{\code{\link{pgam}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

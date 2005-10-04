@@ -19,6 +19,4 @@ Atkinson, A. C. (1985) Plots, transformations and regression : an introduction t
 }
 \author{Washington Leite Junger \email{wjunger@ims.uerj.br}
 }
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

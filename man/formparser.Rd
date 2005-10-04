@@ -6,11 +6,11 @@
 Read the model formula and split it into two new ones concerning the parametric and nonparametric partitions of the predictor.
 }
 \usage{
-formparser(formula, parent.level=1)
+formparser(formula, env=parent.frame())
 }
 \arguments{
 \item{formula}{object representing the model formula. \R standard for GLM models}
-\item{parent.level}{an environment to be used as the parent of the environment created}
+\item{parent.frame}{an environment to be used as the parent of the environment created}
 }
 \details{
 This function extracts all the information in the model formula. Most important, split the model into two parts regarding the parametric nature of the model.
@@ -33,8 +33,6 @@ Washington Leite Junger \email{wjunger@ims.uerj.br}
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}, \code{\link{f}}, \code{\link{g}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}
 
 

@@ -25,6 +25,4 @@ Diggle, P. J. (1989) Time Series : A Biostatistical Introduction. Oxford Univers
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}, \code{\link{periodogram}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

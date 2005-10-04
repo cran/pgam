@@ -39,6 +39,4 @@ Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramérico: Uma Abordagem de Pena
 \note{This function is not intended to be called directly.
 }
 \seealso{\code{\link{pgam}}, \code{\link{pgam.likelihood}}, \code{\link{pgam.fit}}, \code{\link{predict.pgam}}}
-	\keyword{ts}
-	\keyword{smooth}
-	\keyword{regression}
+	\keyword{internal}

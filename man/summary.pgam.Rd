@@ -3,10 +3,11 @@
 \title{Summary output}
 \description{Output of model information}
 \usage{
-\method{summary}{pgam}(object, ...)
+\method{summary}{pgam}(object, smo.test = FALSE, ...)
 }
 \arguments{
 \item{object}{object of class \code{pgam} holding the fitted model}
+\item{smo.test}{Approximate significance test of smoothing terms. It can take long, so default is \code{FALSE}}
 \item{\dots}{further arguments passed to method}
 }
 \details{Hypothesis tests of coefficients are based o \emph{t} distribution. Significance tests of smooth terms are approximate for model selection purpose only. Be very careful about the later.
