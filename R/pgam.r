@@ -378,7 +378,7 @@ pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("d
 {
 st <- proc.time()
 called <- match.call()
-pgam.env <- new.env(FALSE,NULL)  # new environment defined for pgam
+pgam.env <- new.env(FALSE)  # new environment defined for pgam
 assign(".pgam.dataset",dataset,env=pgam.env)	# it is necessary because of f(factor)
 
 if (is.null(formula))
