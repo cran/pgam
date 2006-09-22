@@ -38,7 +38,8 @@
 # 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce) - v. 0.4.2
 # 02/04/2005  fixed model estimated degrees of freedom -  v. 0.4.3
 # 12/09/2005  now dealing with missing values, computation of null.deviance, some fixes, estimated degrees of freedom returned, help improvement, approximate significance test of smoothing terms - v. 0.4.4
-#
+# 05/05/2006  fixed some compatibility issues with R version 2.3.0 - v. 0.4.5
+# 22/09/2006  fixed some compatibility issues with R  version 2.4.0 - v. 0.4.6
 #
 # To do list:
 # -----------
@@ -1454,9 +1455,10 @@ cat("    \\end{tabular}\n\\end{table}\n\% End of tbl2tex() generated file.\n",se
 
 .First.lib <- function(lib, pkg)
 {
+require("stats",quietly=TRUE,warn.conflicts=FALSE) || stop("Package 'stats' is not installed.")
+require("utils",quietly=TRUE,warn.conflicts=FALSE) || stop("Package 'utils' is not installed.")
 ver <- packageDescription("pgam")[c("Version")]
-require("stats",quietly=TRUE,warn.conflicts=FALSE)
-cat(paste("This is pgam library version",ver,"\n",sep=" "))
+cat(paste("This is the library pgam version",ver,"\n",sep=" "))
 library.dynam("pgam",pkg,lib)
 }
 
