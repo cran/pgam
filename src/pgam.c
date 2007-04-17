@@ -3,7 +3,7 @@
 #include <windows.h>  /* For easy self window porting, without needing everything R.h needs */
 #include <stdarg.h>
 #else
-#include <R.h>
+/*#include <R.h>*/
 #endif
 
 #include <math.h>

@@ -38,8 +38,7 @@
 # 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce) - v. 0.4.2
 # 02/04/2005  fixed model estimated degrees of freedom -  v. 0.4.3
 # 12/09/2005  now dealing with missing values, computation of null.deviance, some fixes, estimated degrees of freedom returned, help improvement, approximate significance test of smoothing terms - v. 0.4.4
-# 05/05/2006  fixed some compatibility issues with R version 2.3.0 - v. 0.4.5
-# 22/09/2006  fixed some compatibility issues with R  version 2.4.0 - v. 0.4.6
+#
 #
 # To do list:
 # -----------
@@ -59,8 +58,8 @@ formparser <- function(formula,env=parent.frame())
 # reads the model formula and splits it in two new formulae: one of parametric
 # terms and another for smoothed terms. 
 {
-.pgam.dataset <- get(".pgam.dataset",env=env)
-attach(.pgam.dataset)	# necessary because of f()
+#.pgam.dataset <- get(".pgam.dataset",env=env)
+#attach(.pgam.dataset)	# necessary because of f()
 
 formula <- as.formula(formula)
 formterms <- terms.formula(formula,specials=c("g","f"))	# s'ed terms is supposed to be smoothed (g) and factorised (f)
@@ -166,8 +165,8 @@ if (attr(formterms,"intercept") == 0)
 else
 	intercept <- TRUE
 
-detach(.pgam.dataset)  # i don't like it!!!
-rm(.pgam.dataset) 
+#detach(.pgam.dataset)  # i don't like it!!!
+#rm(.pgam.dataset) 
 retval <- list(response=response,pformula=pformula,pterms=pterms,sformula=sformula,sdf=sdf,sterms=sterms,fterms=fterms,fformula=fformula,factor=factorvar,fnames=fnames,fdata=fdata,fperiod=fperiod,oterm=oterm,offset=offset,intercept=intercept,fullformula=formula)
 class(retval) <- "split.formula"
 return(retval)
@@ -380,7 +379,7 @@ pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("d
 st <- proc.time()
 called <- match.call()
 pgam.env <- new.env(FALSE)  # new environment defined for pgam
-assign(".pgam.dataset",dataset,env=pgam.env)	# it is necessary because of f(factor)
+#assign(".pgam.dataset",dataset,env=pgam.env)	# it is necessary because of f(factor)
 
 if (is.null(formula))
 	stop("Model formula is not specified.")
@@ -1449,16 +1448,16 @@ cat("    ",topleftcell," & ",paste(cnames,sep="",collapse=" & ")," \\\\ ",ifelse
 for(i in 1:r)
 	cat("    ",rnames[i]," & ",paste(round(tbl[i,],digits),sep="",collapse=" & ")," \\\\ ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
 # footer
-cat("    \\end{tabular}\n\\end{table}\n\% End of tbl2tex() generated file.\n",sep="",file=file,append=TRUE)
+cat("    \\end{tabular}\n\\end{table}\n% End of tbl2tex() generated file.\n",sep="",file=file,append=TRUE)
 }
 
 
 .First.lib <- function(lib, pkg)
 {
-require("stats",quietly=TRUE,warn.conflicts=FALSE) || stop("Package 'stats' is not installed.")
-require("utils",quietly=TRUE,warn.conflicts=FALSE) || stop("Package 'utils' is not installed.")
+require("stats",quietly=TRUE,warn.conflicts=FALSE)
+require("utils",quietly=TRUE,warn.conflicts=FALSE)
 ver <- packageDescription("pgam")[c("Version")]
-cat(paste("This is the library pgam version",ver,"\n",sep=" "))
+cat(paste("This is pgam library version",ver,"\n",sep=" "))
 library.dynam("pgam",pkg,lib)
 }
 
