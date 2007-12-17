@@ -1404,7 +1404,7 @@ else if (class(object) == "envelope")
 	e2 <- object$ub
 	residmean <- object$mean
 	resid <- object$residuals
-	band <- range(resid,e1,e2,na.rm=T)
+	band <- range(resid,e1,e2,na.rm=TRUE)
 	}
 
 # plotting the envelope
@@ -1452,21 +1452,6 @@ cat("    \\end{tabular}\n\\end{table}\n% End of tbl2tex() generated file.\n",sep
 }
 
 
-.First.lib <- function(lib, pkg)
-{
-require("stats",quietly=TRUE,warn.conflicts=FALSE)
-require("utils",quietly=TRUE,warn.conflicts=FALSE)
-ver <- packageDescription("pgam")[c("Version")]
-cat(paste("This is pgam library version",ver,"\n",sep=" "))
-library.dynam("pgam",pkg,lib)
-}
-
-
-.Last.lib <- function(libpath)
-{
-# unloading process 
-library.dynam.unload("pgam",libpath)
-}
 
 # functions end here -----------------------
 
