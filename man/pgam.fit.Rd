@@ -26,7 +26,7 @@ Harvey, A. C., Fernandes, C. (1989) Time series models for count data or qualita
 
 Harvey, A. C. (1990) Forecasting, structural time series models and the Kalman Filter. Cambridge, New York
 
-Junger, W. L. (2004) Modelo Poisson-Gama Semi-Parametrico: Uma Abordagem de Penalizacao por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Eletrica
+Junger, W. L. (2004) Semiparametric Poisson-Gamma models: a roughness penalty approach. MSc Dissertation. Rio de Janeiro, PUC-Rio, Department of Electrical Engineering. 
 
 Green, P. J., Silverman, B. W. (1994) Nonparametric Regression and Generalized Linear Models: a roughness penalty approach. Chapman and Hall, London
 

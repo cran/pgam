@@ -1,9 +1,10 @@
-.First.lib <- function(lib, pkg)
+
+.First.lib <- function(lib,pkg)
 {
-require("stats",quietly=TRUE,warn.conflicts=FALSE)
-require("utils",quietly=TRUE,warn.conflicts=FALSE)
-ver <- packageDescription("pgam")[c("Version")]
-cat(paste("This is pgam library version",ver,"\n",sep=" "))
+ver <- packageDescription("pgam",fields="Version")
+require("stats",character.only=TRUE,quietly=TRUE,warn.conflicts=FALSE)
+require("utils",character.only=TRUE,quietly=TRUE,warn.conflicts=FALSE)
+cat("This is pgam library version",ver,"\n",sep=" ")
 library.dynam("pgam","pgam")
 }
 

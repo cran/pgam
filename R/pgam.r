@@ -38,6 +38,7 @@
 # 05/03/2005  several changes in order to share functions with ocdm package and co-author included (Ponce) - v. 0.4.2
 # 02/04/2005  fixed model estimated degrees of freedom -  v. 0.4.3
 # 12/09/2005  now dealing with missing values, computation of null.deviance, some fixes, estimated degrees of freedom returned, help improvement, approximate significance test of smoothing terms - v. 0.4.4
+# 16/06/2009  bug fixes to comply with R 2.9.0 - v. 0.4.7
 #
 #
 # To do list:
@@ -378,7 +379,7 @@ pgam <- function(formula,dataset,omega=0.8,beta=0.1,offset=1,digits=getOption("d
 {
 st <- proc.time()
 called <- match.call()
-pgam.env <- new.env(FALSE)  # new environment defined for pgam
+pgam.env <- new.env()  # new environment defined for pgam
 #assign(".pgam.dataset",dataset,env=pgam.env)	# it is necessary because of f(factor)
 
 if (is.null(formula))
@@ -1151,7 +1152,7 @@ if (!is.null(edf))
 	for (i in 1:s)
 		{
 		if (at.once)
-			get(getOption("device"))()
+			getOption("device")()
 		else
 			if (interactive())
 				{
@@ -1450,7 +1451,6 @@ for(i in 1:r)
 # footer
 cat("    \\end{tabular}\n\\end{table}\n% End of tbl2tex() generated file.\n",sep="",file=file,append=TRUE)
 }
-
 
 
 # functions end here -----------------------

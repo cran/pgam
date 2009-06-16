@@ -11,7 +11,6 @@ envelope(object, ...)
     \item{object}{object holding the fitted model}
 	\item{\dots}{further arguments to passed to methods}
 }
-}
 \value{An object of class \code{envelope} holding the information needed to plot the envelope.
 }
 \references{
