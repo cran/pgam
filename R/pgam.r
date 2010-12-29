@@ -1291,8 +1291,7 @@ intensity <- function(w,x)
 {
 n <- length(x)
 t <- seq(1:n)
-
-sp <- ((sum(x*cos(w*t)))^2+(sum(x*cos(w*t)))^2)/n
+sp <- ((sum(x*cos(w*t)))^2+(sum(x*sin(w*t)))^2)/n
 return(sp)
 }
 
@@ -1449,7 +1448,8 @@ cat("    ",topleftcell," & ",paste(cnames,sep="",collapse=" & ")," \\\\ ",ifelse
 for(i in 1:r)
 	cat("    ",rnames[i]," & ",paste(round(tbl[i,],digits),sep="",collapse=" & ")," \\\\ ",ifelse(hline,"\\hline",""),"\n",sep="",file=file,append=TRUE)
 # footer
-cat("    \\end{tabular}\n\\end{table}\n% End of tbl2tex() generated file.\n",sep="",file=file,append=TRUE)
+cat("    \\end{tabular}\n\\end{table}\n",sep="",file=file,append=TRUE)
+cat("% End of tbl2tex() generated file.\n",sep="",file=file,append=TRUE)
 }
 
 

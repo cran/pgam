@@ -1,6 +1,6 @@
 Package: pgam
-Version: 0.4.9
-Date: 2009-06-16
+Version: 0.4.11
+Date: 2010-12-29
 Author: Washington Junger <wjunger@ims.uerj.br> and Antonio Ponce de
         Leon <ponce@ims.uerj.br>
 Maintainer: Washington Junger <wjunger@ims.uerj.br>
@@ -14,6 +14,6 @@ Description: This work is an extension of the state space model for
         process that combines maximization of likelihood and
         backfitting algorithm.
 License: GPL (>= 2)
-Packaged: 2009-06-17 01:08:41 UTC; wjunger
+Packaged: 2010-12-29 14:48:06 UTC; wjunger
 Repository: CRAN
-Date/Publication: 2009-06-17 09:13:15
+Date/Publication: 2011-01-03 12:35:45
