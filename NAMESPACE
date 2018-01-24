@@ -1,11 +1,37 @@
-# Default NAMESPACE created by R
-# Remove the previous line if you edit this file
+useDynLib("pgam", .registration = TRUE)
 
 # Export all names
-exportPattern(".")
+# exportPattern(".")
+
+# Export only
+export(
+pgam,
+periodogram,
+tbl2tex
+)
+
+# Registering S3 methods
+S3method(deviance,pgam)
+S3method(envelope,pgam)
+S3method(fitted,pgam)
+S3method(logLik,pgam)
+S3method(plot,pgam)
+S3method(predict,pgam)
+S3method(print,pgam)
+S3method(residuals,pgam)
+S3method(summary,pgam)
+S3method(AIC,pgam)
+S3method(coef,pgam)
+S3method(print,summary.pgam)
+
+
 
 # Import all packages listed as Imports or Depends
 import(
   stats,
   utils
 )
+
+# Global functions and variables
+importFrom("graphics", "legend", "lines", "plot", "title","axis", "par")
+

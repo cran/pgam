@@ -1,13 +1,16 @@
 
-.onLoad <- function(libname,pkgname)
+.onAttach <- function(libname,pkgname)
 {
-ver <- packageDescription("pgam",fields="Version")
-require("stats",character.only=TRUE,quietly=TRUE,warn.conflicts=FALSE)
-require("utils",character.only=TRUE,quietly=TRUE,warn.conflicts=FALSE)
-cat("This is pgam library version",ver,"\n",sep=" ")
-library.dynam("pgam",pkgname,libname)
+#require("stats",character.only=TRUE,quietly=TRUE,warn.conflicts=FALSE)
+#require("utils",character.only=TRUE,quietly=TRUE,warn.conflicts=FALSE)
+ver <- utils::packageDescription(pkgname,fields="Version")
+packageStartupMessage(paste(pkgname,ver,sep=" "))
 }
 
+.onLoad <- function(libname,pkgname)
+{
+library.dynam("pgam",pkgname,libname)
+}
 
 .onUnload <- function(libpath)
 {

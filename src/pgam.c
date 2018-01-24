@@ -83,9 +83,10 @@ for (t=tau+1;t<n;t++)
 	*likval += lgamma(att1[t]+y[t])-lgamma(y[t]+1.0)-lgamma(att1[t])+att1[t]*log(btt1[t])-(att1[t]+y[t])*log(1.0+btt1[t]);
 }
 
-
+/*
 int main(void)
 /* intended for testing only */
+/*
 {
 int j,n=10,fnz=1;
 vector y,eta,att1,btt1;
@@ -114,4 +115,4 @@ printf("value of likelihood is %f\n",llik);
 
 return(0);
 }
-
+*/

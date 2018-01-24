@@ -4,7 +4,10 @@
 \description{Export a data frame to a fancy LaTeX table environment.
 }
 \usage{
-tbl2tex(tbl, label = "tbl:label(must_be_changed!)", caption = "Table generated with tbl2tex.", centered = TRUE, alignment = "center", digits = getOption("digits"), hline = TRUE, vline = TRUE, file = "", topleftcell = "   ")
+tbl2tex(tbl, label = "tbl:label(must_be_changed!)", 
+caption = "Table generated with tbl2tex.", centered = TRUE, 
+alignment = "center", digits = getOption("digits"), hline = TRUE, 
+vline = TRUE, file = "", topleftcell = "   ")
 }
 \arguments{
   \item{tbl}{object of type data frame or matrix}

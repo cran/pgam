@@ -4,7 +4,7 @@
 # This software can be cited as follow:
 # cite the dissertation the source code is attached:
 #
-# Junger, W. L. (2004) Modelo Poisson-Gama Semi-Paramétrico: Uma Abordagem de Penalização por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Elétrica
+# Junger, W. L. (2004) Modelo Poisson-Gama Semi-Parametrico: Uma Abordagem de Penalizacaoo por Rugosidade. MSc Thesis. Rio de Janeiro, PUC-Rio, Departamento de Engenharia Eletrica
 #
 # R code for Poisson-Gamma Additive Models (pgam)
 # it is part of Washington Junger's MSc. dissertations
@@ -39,7 +39,7 @@
 # 02/04/2005  fixed model estimated degrees of freedom -  v. 0.4.3
 # 12/09/2005  now dealing with missing values, computation of null.deviance, some fixes, estimated degrees of freedom returned, help improvement, approximate significance test of smoothing terms - v. 0.4.4
 # 16/06/2009  bug fixes to comply with R 2.9.0 - v. 0.4.7
-#
+# 25/01/2018  fix cran compatibility
 #
 # To do list:
 # -----------
@@ -222,7 +222,7 @@ oo <- .C("pgam_loglik",
 		PACKAGE="pgam")
 
 loglik <- list(value=oo$lvalue,eta=eta,att1=att1,btt1=btt1)
-assign("loglik",loglik,env=env)
+assign("loglik",loglik,envir=env)
 
 return(oo$lvalue)
 }
@@ -514,7 +514,7 @@ if (kp == 0)
 #if (is.null(px) && !is.null(sx))
 #   	stop("This application still not fit full non-linear predictor models.")
 
-assign("loglik",NULL,env=pgam.env)
+assign("loglik",NULL,envir=pgam.env)
 
 # mle estimation
 par <- pgam.psi2par(omega,beta,fperiod)
@@ -644,7 +644,7 @@ else
 	convergence <- "not converged"
 
 loglik.value <- (-1)*optimized$value
-loglik <- get("loglik",env=pgam.env)
+loglik <- get("loglik",envir=pgam.env)
 att1 <- loglik$att1
 btt1 <- loglik$btt1
 
@@ -893,20 +893,20 @@ yhats <- napredict(na.action,yhats)
 # forecasting
 if (forecast)
 	{
-	stop("Sorry! Forecasting is broken for now.\n")
+	#stop("Sorry! Forecasting is broken for now.\n")
 	if (model == "semiparametric")
 		stop("Forecasting of semiparametric models is not implemented yet.\n")
 	fc <- double(k)
 	if (model == "levelonly")
-		for (l in 1:k)
+		for (n in 1:k)
 			fc[l] <- sum(w^(0:(n-1))*y[n:1],na.rm=TRUE)/sum(w^(0:(n-1)),na.rm=TRUE)
 	else
 		{
 		if (!is.null(x))
 			{
 			etaf <- x%*%beta
-			for (t in 1:k)
-				fc[l] <- w*exp(etaf[n+l])*sum(w^(0:(n-1))*y[n:1],na.rm=TRUE)/sum(w^(0:(n-1))*exp(eta[n:1]),na.rm=TRUE)
+			for (l in 1:k)
+				fc[l] <- w*exp(etaf[n+l])*sum(w^(0:(n-1))*y[n:1],na.rm=TRUE)/sum(w^(0:(n-1))*exp(etaf[n:1]),na.rm=TRUE)
 			}
 		else
 			{
@@ -1286,19 +1286,19 @@ return(norm)
 }
 
 
-intensity <- function(w,x)
-# spectral analysis of series x
-{
-n <- length(x)
-t <- seq(1:n)
-sp <- ((sum(x*cos(w*t)))^2+(sum(x*sin(w*t)))^2)/n
-return(sp)
-}
-
-
 periodogram <- function(y,rows=trunc(length(na.omit(y))/2-1),plot=TRUE,...)
 # creates and plots periodogram of series x
 {
+
+    intensity <- function(w,x)
+    # spectral analysis of series x
+    {
+    n <- length(x)
+    t <- seq(1:n)
+    sp <- ((sum(x*cos(w*t)))^2+(sum(x*sin(w*t)))^2)/n
+    return(sp)
+    }
+
 # initialization
 if (rows > trunc(length(na.omit(y))/2-1))
 	rows <- trunc(length(na.omit(y))/2-1)
@@ -1355,19 +1355,20 @@ if (class(object) == "pgam")
 	resid <- resid(object,type)[(tau+1):n]
 	e <- matrix(NA,(n-tau),rep)
 	
-	attach(dataset)
-	for (i in 1:rep)
-        {
-        if (verbose)
-			cat(paste("\nReplication:",i,"\n"))
-		else
-			cat(paste("[",i,"]",sep=""))
-		SIMRESP <- rpois(object$n.obs,fitted)
-        runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=optim.method,se.estimation="none",verbose=verbose,lfn.scale=1e3)
-        # for now these will be the defaults ---> must be changed!
-		runningresid <- resid(runningmodel,type)[(tau+1):n]
-		e[,i] <- sort(runningresid,na.last=TRUE,method="shell")
-		}
+	with(dataset,
+        for (i in 1:rep)
+            {
+            if (verbose)
+                cat(paste("\nReplication:",i,"\n"))
+            else
+                cat(paste("[",i,"]",sep=""))
+            SIMRESP <- rpois(object$n.obs,fitted)
+            runningmodel <- pgam(formula,dataset=cbind.data.frame(SIMRESP,dataset),omega=object$omega,beta=object$beta,offset=object$offset,maxit=1e2,eps=1e-4,optim.method=optim.method,se.estimation="none",verbose=verbose,lfn.scale=1e3)
+            # for now these will be the defaults ---> must be changed!
+            runningresid <- resid(runningmodel,type)[(tau+1):n]
+            e[,i] <- sort(runningresid,na.last=TRUE,method="shell")
+            }
+    )
 
 	e1 <- numeric(n-tau)
 	e2 <- numeric(n-tau)

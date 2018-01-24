@@ -5,8 +5,9 @@
 \description{A normal plot with simulated envelope of the residual is produced.
 }
 \usage{
-\method{envelope}{pgam}(object, type = "deviance", size = 0.95, rep = 19, optim.method = NULL, 
-epsilon = 0.001, maxit = 100, plot = TRUE, title="Simulated Envelope of Residuals", verbose = FALSE, ...)
+\method{envelope}{pgam}(object, type = "deviance", size = 0.95, 
+rep = 19, optim.method = NULL, epsilon = 0.001, maxit = 100, 
+plot = TRUE, title="Simulated Envelope of Residuals", verbose = FALSE, ...)
 }
 \arguments{
   \item{object}{object of class \code{pgam} holding the fitted model}

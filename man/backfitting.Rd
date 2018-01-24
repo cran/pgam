@@ -4,7 +4,8 @@
 \description{Fit the nonparametric part of the model via backfitting algorithm.
 }
 \usage{
-backfitting(y, x, df, smoother = "spline", w = rep(1, length(y)), eps = 0.001, maxit = 100, info = TRUE)
+backfitting(y, x, df, smoother = "spline",
+w = rep(1, length(y)), eps = 0.001, maxit = 100, info = TRUE)
 }
 \arguments{
   \item{y}{dependent variable for fitting. In semiparametric models, this is the partial residuals of parametric fit}
