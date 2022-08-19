@@ -1,7 +1,9 @@
-7cf2afc925c55b1b5e72c3f2126aa196 *DESCRIPTION
+fd2d745dfe045e01835176584db6b3da *DESCRIPTION
+1ebbd3e34237af26da5dc08a4e440464 *LICENSE
 e782f9eb4971efdc7f83764293b46218 *NAMESPACE
-fc18a2c0a95181b83e2687393fc047fa *R/pgam.r
+144038f5b35cf973061618e2ccc3da1c *R/pgam.r
 35fddf0aced766313cb3266ddd7cccb6 *R/zzz.r
+ed6ffde739e061c3ff3f7ee6ce214232 *README.md
 a3a9ad27e73cf95104d8516012252851 *data/aihrio.rda
 875adc15fd53b78262da77a60bcd7f1b *man/AIC.pgam.Rd
 4dc41b4bf276e3b8ac1912b27b240a74 *man/aihrio.Rd
@@ -26,7 +28,7 @@ ce5ccfddfe922e3521576ae5f455ebe3 *man/g.Rd
 486b6f5194b7d0fc8ace0fa6f97c5357 *man/pgam.filter.Rd
 1bed98feed46f25b49da8abeead830db *man/pgam.fit.Rd
 b4c06e6dfdb50026022713834fded23e *man/pgam.hes2se.Rd
-56b770304f2b4a3416a7f4bfec33b8a5 *man/pgam.likelihood.Rd
+eee31f440fa3240c85503b7d535ad95c *man/pgam.likelihood.Rd
 97290f6dff557359b3b8dce92002621e *man/pgam.par2psi.Rd
 33c17b38cd9e1b36857aa1d2818a907c *man/pgam.psi2par.Rd
 1a5462913e252e29dd8ece8b53eafc9d *man/plot.pgam.Rd

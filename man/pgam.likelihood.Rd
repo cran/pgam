@@ -17,8 +17,7 @@ pgam.likelihood(par, y, x, offset, fperiod, env = parent.frame())
 }
 \details{
 Log-likelihood function of hyperparameters \eqn{\omega} and \eqn{\beta} is given by
-\deqn{\log L\left(\omega,\beta\right)=\sum_{t=\tau+1}^{n}{\log \Gamma\left(a_{t|t-1}+y_{t}\right)-\log y_{t}!-\cr
-\log \Gamma\left(a_{t|t-1}\right)+a_{t|t-1}\log b_{t|t-1}-\left(a_{t|t-1}+y_{t}\right)\log \left(1+b_{t|t-1}\right)}}
+\deqn{\log L\left(\omega,\beta\right)=\sum_{t=\tau+1}^{n}{\log \Gamma\left(a_{t|t-1}+y_{t}\right)-\log y_{t}!-\log \Gamma\left(a_{t|t-1}\right)+a_{t|t-1}\log b_{t|t-1}-\left(a_{t|t-1}+y_{t}\right)\log \left(1+b_{t|t-1}\right)}}
 where \eqn{a_{t|t-1}} and \eqn{b_{t|t-1}} are estimated as it is shown in \code{\link{pgam.filter}}.
 }
 \value{
